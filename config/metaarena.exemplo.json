@@ -1,0 +1,222 @@
+{
+  "schema_version": 4,
+  "nome": "arena_exemplo",
+  "areas": [
+    {
+      "id": "WS_1",
+      "tipo": "WORKSTATION",
+      "altura_cm": 0,
+      "lado_marcado": true,
+      "niveis": 2,
+      "cavidades": 0,
+      "max_pilha": 0
+    },
+    {
+      "id": "WS_2",
+      "tipo": "WORKSTATION",
+      "altura_cm": 5,
+      "lado_marcado": true,
+      "niveis": 2,
+      "cavidades": 0,
+      "max_pilha": 0
+    },
+    {
+      "id": "WS_3",
+      "tipo": "WORKSTATION",
+      "altura_cm": 10,
+      "lado_marcado": true,
+      "niveis": 2,
+      "cavidades": 0,
+      "max_pilha": 0
+    },
+    {
+      "id": "WS_4",
+      "tipo": "WORKSTATION",
+      "altura_cm": 10,
+      "lado_marcado": false,
+      "niveis": 2,
+      "cavidades": 0,
+      "max_pilha": 0
+    },
+    {
+      "id": "WS_5",
+      "tipo": "WORKSTATION",
+      "altura_cm": 15,
+      "lado_marcado": false,
+      "niveis": 2,
+      "cavidades": 0,
+      "max_pilha": 0
+    },
+    {
+      "id": "WS_6",
+      "tipo": "WORKSTATION",
+      "altura_cm": 15,
+      "lado_marcado": false,
+      "niveis": 2,
+      "cavidades": 0,
+      "max_pilha": 0
+    },
+    {
+      "id": "SH_1",
+      "tipo": "SHELF",
+      "altura_cm": null,
+      "lado_marcado": true,
+      "niveis": 2,
+      "cavidades": 0,
+      "max_pilha": 0
+    },
+    {
+      "id": "SH_2",
+      "tipo": "SHELF",
+      "altura_cm": null,
+      "lado_marcado": false,
+      "niveis": 2,
+      "cavidades": 0,
+      "max_pilha": 0
+    },
+    {
+      "id": "PP",
+      "tipo": "PRECISION",
+      "altura_cm": null,
+      "lado_marcado": true,
+      "niveis": 2,
+      "cavidades": 7,
+      "max_pilha": 0
+    },
+    {
+      "id": "ST",
+      "tipo": "STACKING",
+      "altura_cm": 5,
+      "lado_marcado": false,
+      "niveis": 2,
+      "cavidades": 0,
+      "max_pilha": 3
+    }
+  ],
+  "cubos": [
+    {
+      "id": 1,
+      "cor": "BLUE"
+    },
+    {
+      "id": 2,
+      "cor": "BLUE"
+    },
+    {
+      "id": 3,
+      "cor": "BLUE"
+    },
+    {
+      "id": 4,
+      "cor": "BLUE"
+    },
+    {
+      "id": 5,
+      "cor": "BLUE"
+    },
+    {
+      "id": 6,
+      "cor": "BLUE"
+    },
+    {
+      "id": 7,
+      "cor": "BLUE"
+    },
+    {
+      "id": 8,
+      "cor": "BLUE"
+    },
+    {
+      "id": 9,
+      "cor": "BLUE"
+    },
+    {
+      "id": 10,
+      "cor": "BLUE"
+    },
+    {
+      "id": 11,
+      "cor": "BLUE"
+    },
+    {
+      "id": 12,
+      "cor": "BLUE"
+    },
+    {
+      "id": 1,
+      "cor": "RED"
+    },
+    {
+      "id": 2,
+      "cor": "RED"
+    },
+    {
+      "id": 3,
+      "cor": "RED"
+    },
+    {
+      "id": 4,
+      "cor": "RED"
+    },
+    {
+      "id": 5,
+      "cor": "RED"
+    },
+    {
+      "id": 6,
+      "cor": "RED"
+    },
+    {
+      "id": 13,
+      "cor": "RED"
+    },
+    {
+      "id": 14,
+      "cor": "RED"
+    },
+    {
+      "id": 15,
+      "cor": "RED"
+    },
+    {
+      "id": 16,
+      "cor": "RED"
+    },
+    {
+      "id": 17,
+      "cor": "RED"
+    },
+    {
+      "id": 18,
+      "cor": "RED"
+    },
+    {
+      "id": 19,
+      "cor": "BLUE"
+    },
+    {
+      "id": 20,
+      "cor": "BLUE"
+    },
+    {
+      "id": 21,
+      "cor": "RED"
+    },
+    {
+      "id": 22,
+      "cor": "RED"
+    },
+    {
+      "id": 23,
+      "cor": "BLUE"
+    },
+    {
+      "id": 24,
+      "cor": "RED"
+    }
+  ],
+  "containers": {
+    "BLUE": 1,
+    "RED": 1
+  }
+}

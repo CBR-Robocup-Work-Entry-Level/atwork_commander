@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "service_areas": [
+    {
+      "id": "WS_1",
+      "tipo": "WORKSTATION",
+      "altura_cm": 15,
+      "dist_start_m": 2.05,
+      "lado_marcado": false
+    },
+    {
+      "id": "WS_2",
+      "tipo": "WORKSTATION",
+      "altura_cm": 15,
+      "dist_start_m": 2.75,
+      "lado_marcado": false
+    },
+    {
+      "id": "WS_3",
+      "tipo": "WORKSTATION",
+      "altura_cm": 15,
+      "dist_start_m": 1.7,
+      "lado_marcado": false
+    },
+    {
+      "id": "WS_4",
+      "tipo": "WORKSTATION",
+      "altura_cm": 15,
+      "dist_start_m": 2.87,
+      "lado_marcado": false
+    },
+    {
+      "id": "WS_5",
+      "tipo": "WORKSTATION",
+      "altura_cm": 15,
+      "dist_start_m": 4.73,
+      "lado_marcado": false
+    }
+  ]
+}

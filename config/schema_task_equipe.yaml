@@ -1,0 +1,89 @@
+# =============================================================================
+# @Work Commander — CONTRATO DO ARQUIVO DE EQUIPE
+# =============================================================================
+# Este arquivo documenta o formato do YAML entregue as equipes. Ele nao e' lido
+# pelo programa: e' a referencia de campo a campo para quem escreve o parser do
+# robo. O gerador de verdade esta em atwork/export/team_yaml.py.
+#
+# Base: os exemplos oficiais da competicao (BMT.yaml, ATT1.yaml). Duas mudancas
+# vem das regras desta edicao e estao marcadas com [2026].
+#
+# O guia do juiz e' outro documento, em Markdown, e traz o que NAO entra aqui:
+# cores dos ATTCs, decoys, obstaculos, areas inativas, seed e desvios de arena.
+# =============================================================================
+
+task_id: ATT2                       # BMT | BTT1 | BTT2 | AMT | ATT1 | ATT2 | FINAL
+name: Advanced Transportation Test II
+duration_min: 20                    # fixo por prova: 6/10/10/15/20/20/30
+
+# IDs das areas ativas nesta task. Areas montadas mas nao listadas aqui devem
+# permanecer vazias durante a prova.
+#   WS_<n> workstation | SH_<n> prateleira | PP mesa de precisao
+#   ST     area de empilhamento
+active_service_areas: [WS_1, WS_4, SH_2, PP]
+
+# Objetos de tarefa (ATTCs). O valor de `id` e' o ID da AprilTag colada no cubo,
+# entre 1 e 30.
+#
+# [2026] ATTC tem apenas ID e cor — o campo `type` deixou de existir. A cor NAO
+# aparece aqui: identificar cor e' responsabilidade do robo. Dentro de uma mesma
+# task os IDs nunca se repetem.
+objects:
+  - {id: 4}
+  - {id: 9}
+  - {id: 17}
+
+# [2026] Containers nao tem mais ID: a COR e' a identidade. O arquivo diz apenas
+# em que workstation cada um esta. Azul e vermelho podem dividir a mesma mesa.
+# Ausente nas provas que nao usam container.
+#
+# [2026] A constraint de container NAO nomeia cor: todo cubo vai para o container
+# da propria cor, entao dizer "the RED container" entregaria a cor do objeto —
+# justo o que este arquivo esconde. A frase enuncia a regra; o robo deduz o
+# destino da leitura de cor que ele mesmo faz.
+containers:
+  - {color: BLUE, at: WS_1}
+  - {color: RED, at: WS_4}
+
+# start_state e finish_state tem o mesmo formato: um mapa com exatamente as
+# areas ativas, mesmo as vazias. O conjunto de objetos e' identico nos dois
+# estados e igual a lista `objects`.
+start_state:
+  WS_1:
+    # Ordem = posicao dos objetos da esquerda para a direita na zona de
+    # manipulacao, olhando de frente para a area.
+    obj_ids: [4, 9]
+    # [2026] Antes era `cont_ids` com inteiros. O nome mudou junto com o
+    # conteudo, de proposito: um parser que esperava numero falha alto em vez de
+    # ler lixo.
+    cont_colors: [BLUE]
+  WS_4:
+    obj_ids: [17]
+    cont_colors: [RED]
+  SH_2:
+    obj_ids: []
+  PP:
+    obj_ids: []
+
+finish_state:
+  WS_1:
+    obj_ids: [17]
+    cont_colors: [BLUE]
+  WS_4:
+    obj_ids: []
+    cont_colors: [RED]
+  SH_2:
+    obj_ids: [9]
+  PP:
+    obj_ids: [4]
+
+# NAO existe bloco `constraints`. Como colocar cada objeto sai do rulebook, nao
+# da task, e repetir a regra a cada arquivo so faria ruido:
+#
+#   - cubo entra no container da PROPRIA cor;
+#   - entrega em prateleira e' no nivel superior, coleta e' no inferior;
+#   - na mesa de precisao, cada tag vai na cavidade que casa com ela;
+#   - no AMT, ordem numerica crescente da esquerda para a direita.
+#
+# O gerador ainda garante que a leitura seja unica: nenhum cubo termina solto na
+# area que hospeda o container da mesma cor, porque ai as duas leituras caberiam.
