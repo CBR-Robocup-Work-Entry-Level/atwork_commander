@@ -2,8 +2,10 @@
 
     python tools/selftest.py [N] [PROVA ...] [--metaarena CAMINHO] [--decoys K]
 
-Gera as tasks em memoria (nada e' gravado), valida cada uma e ainda exercita os
-dois exportadores — um YAML que estoure excecao conta como falha.
+Gera as tasks em memoria (nada e' gravado), valida cada uma, exercita os dois
+exportadores e ainda confere o CONTRATO do arquivo de equipe (uniao das chaves
+de posicao == obj_ids, areas == active_service_areas, slots na ordem das tags)
+— um YAML que estoure excecao ou fure o contrato conta como falha.
 Sai com codigo 1 se qualquer prova falhar.
 """
 
@@ -15,6 +17,8 @@ import traceback
 from collections import Counter
 from pathlib import Path
 
+import yaml
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from atwork import generators, rules                      # noqa: E402
@@ -22,6 +26,7 @@ from atwork.arena import carregar                          # noqa: E402
 from atwork.arena.model import Metaarena, MetaarenaError   # noqa: E402
 from atwork.core.errors import GenerationError             # noqa: E402
 from atwork.export import gerar_yaml, gerar_yaml_juiz      # noqa: E402
+from atwork.export.team_yaml import conferir               # noqa: E402
 
 MAX_FALHAS = 5
 
@@ -37,8 +42,12 @@ def testar(prova: str, meta: Metaarena, n: int, decoys: int | None) -> tuple[lis
         opcoes = generators.Opcoes(seed=seed, decoys=decoys)
         try:
             task = generators.gerar(meta, prova, opcoes)
-            gerar_yaml(task)
+            texto = gerar_yaml(task)
             gerar_yaml_juiz(task)
+            quebras = conferir(yaml.safe_load(texto))
+            if quebras:
+                falhas.append(f"seed {seed}: contrato do arquivo de equipe furado: {quebras}")
+                continue
             resumo["ok"] += 1
             if task.desvios:
                 resumo["com_desvio"] += 1

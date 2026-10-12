@@ -10,8 +10,9 @@ Formato de entrada (caramelo_mapping/maps/<mapa>/service_areas.yaml):
         type: workstation
         table: {width: 0.8, depth: 0.5, height: 0.1}
 
-Lado marcado e inventario de cubos nao existem no mapa do robo: continuam
-sendo preenchidos na GUI.
+Lado marcado, inventario de cubos e tags de referencia (slots da PP, centro
+da ST) nao existem no mapa do robo: continuam sendo preenchidos na GUI, e as
+tags assumem o padrao da competicao enquanto isso.
 """
 
 from __future__ import annotations
@@ -103,8 +104,8 @@ def importar_service_areas(caminho: Path | str) -> tuple[Metaarena, list[str]]:
                 tipo=tipo,
                 altura_cm=_altura_cm(dados) if tipo in ("WORKSTATION", "STACKING") else None,
                 niveis=2,
-                cavidades=rules.AMT_CAVIDADES if tipo == "PRECISION" else 0,
-                max_pilha=3 if tipo == "STACKING" else 0,
+                cavidades=rules.AMT_SLOTS if tipo == "PRECISION" else 0,
+                max_pilha=rules.MAX_PILHA_PADRAO if tipo == "STACKING" else 0,
             )
         )
 

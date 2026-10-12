@@ -10,6 +10,9 @@ Historico do schema:
   area, entao os dois campos nao mudavam nenhuma decisao do gerador.
 - v4: sem `capacidade` (virou rules.MAX_OBJETOS_POR_AREA) e sem `disponivel`
   (apagar a linha da area faz o mesmo).
+- v5: `slot_tags` na mesa de precisao e `tag_referencia` na area de
+  empilhamento — as AprilTags fixas da arena que o robo usa como referencia.
+  Ausentes, valem os padroes de rules.py.
 
 A migracao e' so leitura: campos que sairam sao ignorados, e o arquivo so muda
 de formato quando o usuario salva.
@@ -18,29 +21,54 @@ de formato quando o usuario salva.
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
 from pathlib import Path
 
 from atwork import paths, rules
 from atwork.arena.model import Cubo, Metaarena, MetaarenaError, ServiceArea
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 # Tipos que existiam so para ancorar geometria e sairam no schema v3.
 TIPOS_APOSENTADOS = ("START", "FINISH")
 
 
+def _inteiros(valor) -> list[int]:
+    if not valor:
+        return []
+    return [int(v) for v in valor]
+
+
 def _area_de_dict(item: dict) -> ServiceArea:
     tipo = str(item.get("tipo", "")).upper()
+    tag_ref = item.get("tag_referencia")
     return ServiceArea(
         id=str(item.get("id", "")).upper(),
         tipo=tipo,
         altura_cm=item.get("altura_cm"),
         lado_marcado=bool(item.get("lado_marcado", False)),
         niveis=int(item.get("niveis", 2)),
-        cavidades=int(item.get("cavidades", rules.AMT_CAVIDADES if tipo == "PRECISION" else 0)),
-        max_pilha=int(item.get("max_pilha", 3 if tipo == "STACKING" else 0)),
+        cavidades=int(item.get("cavidades", rules.AMT_SLOTS if tipo == "PRECISION" else 0)),
+        max_pilha=int(item.get("max_pilha", rules.MAX_PILHA_PADRAO if tipo == "STACKING" else 0)),
+        slot_tags=_inteiros(item.get("slot_tags")) if tipo == "PRECISION" else [],
+        tag_referencia=int(tag_ref) if (tipo == "STACKING" and tag_ref is not None) else None,
     )
+
+
+def _area_para_dict(area: ServiceArea) -> dict:
+    doc = {
+        "id": area.id,
+        "tipo": area.tipo,
+        "altura_cm": area.altura_cm,
+        "lado_marcado": area.lado_marcado,
+        "niveis": area.niveis,
+        "cavidades": area.cavidades,
+        "max_pilha": area.max_pilha,
+    }
+    if area.tipo == "PRECISION":
+        doc["slot_tags"] = area.tags_dos_slots()
+    if area.tipo == "STACKING":
+        doc["tag_referencia"] = area.tag_ref
+    return doc
 
 
 def _normalizar(doc: dict) -> list[dict]:
@@ -73,7 +101,7 @@ def para_dict(meta: Metaarena) -> dict:
     return {
         "schema_version": SCHEMA_VERSION,
         "nome": meta.nome,
-        "areas": [asdict(a) for a in meta.areas],
+        "areas": [_area_para_dict(a) for a in meta.areas],
         "cubos": [{"id": c.id, "cor": c.cor} for c in sorted(meta.cubos)],
         "containers": {cor: meta.containers.get(cor, 0) for cor in rules.CORES},
     }

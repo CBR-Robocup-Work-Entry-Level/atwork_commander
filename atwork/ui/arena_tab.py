@@ -2,7 +2,8 @@
 
 Cada area guarda o minimo que muda alguma decisao do gerador: tipo, altura,
 lado da zona segue-linha e a geometria propria do seu tipo — niveis da
-prateleira, cavidades da mesa de precisao, altura maxima da pilha.
+prateleira, slots da mesa de precisao (com a tag de referencia de cada um),
+tag de referencia e altura maxima da pilha na area de empilhamento.
 """
 
 from __future__ import annotations
@@ -29,7 +30,12 @@ COLUNAS = (
     ("tipo", "Tipo", 150),
     ("altura", "Altura", 60),
     ("lado", "Lado", 90),
+    ("tags", "Tags de referencia", 190),
 )
+
+
+def _tags_padrao_pp(cavidades: int) -> str:
+    return ", ".join(str(rules.TAG_SLOT_PP_BASE + i) for i in range(cavidades))
 
 
 class AbaArena(ttk.Frame):
@@ -77,8 +83,10 @@ class AbaArena(ttk.Frame):
         self.var_altura = tk.StringVar(value="10")
         self.var_lado = tk.BooleanVar(value=False)
         self.var_niveis = tk.StringVar(value="2")
-        self.var_cavidades = tk.StringVar(value="7")
-        self.var_pilha = tk.StringVar(value="3")
+        self.var_cavidades = tk.StringVar(value=str(rules.AMT_SLOTS))
+        self.var_slot_tags = tk.StringVar(value=_tags_padrao_pp(rules.AMT_SLOTS))
+        self.var_pilha = tk.StringVar(value=str(rules.MAX_PILHA_PADRAO))
+        self.var_tag_ref = tk.StringVar(value=str(rules.TAG_REFERENCIA_ST))
 
         linha = 0
         rotulo(form, "Tipo", linha)
@@ -99,16 +107,30 @@ class AbaArena(ttk.Frame):
         rotulo(form, "Niveis (prateleira)", linha)
         self.e_niveis = campo(form, self.var_niveis, linha)
         linha += 1
-        rotulo(form, "Cavidades (precisao)", linha)
+        rotulo(form, "Slots (precisao)", linha)
         self.e_cavidades = campo(form, self.var_cavidades, linha)
+        linha += 1
+        rotulo(form, "Tags dos slots, esq. -> dir.", linha)
+        self.e_slot_tags = campo(form, self.var_slot_tags, linha, largura=26)
         linha += 1
         rotulo(form, "Pilha maxima (empilh.)", linha)
         self.e_pilha = campo(form, self.var_pilha, linha)
+        linha += 1
+        rotulo(form, "Tag de referencia (empilh.)", linha)
+        self.e_tag_ref = campo(form, self.var_tag_ref, linha)
 
         linha += 1
         ttk.Checkbutton(
             form, text="No lado marcado (zona segue-linha)", variable=self.var_lado
         ).grid(row=linha, column=0, columnspan=2, sticky="w", pady=(2, 8))
+
+        linha += 1
+        ttk.Label(
+            form,
+            text=f"Tags de referencia usam IDs >= {rules.TAG_REFERENCIA_MIN}, fora da faixa "
+                 f"dos ATTCs ({rules.ID_MIN}..{rules.ID_MAX}), e nunca se repetem na arena.",
+            wraplength=250, style="CartaoFraco.TLabel",
+        ).grid(row=linha, column=0, columnspan=2, sticky="w", pady=(0, 8))
 
         linha += 1
         botao(form, "Adicionar / atualizar", self._salvar_area, row=linha, column=0, columnspan=2)
@@ -136,7 +158,9 @@ class AbaArena(ttk.Frame):
         self.cb_altura.configure(state="readonly" if tipo in COM_ALTURA else "disabled")
         self.e_niveis.configure(state="normal" if tipo == "SHELF" else "disabled")
         self.e_cavidades.configure(state="normal" if tipo == "PRECISION" else "disabled")
+        self.e_slot_tags.configure(state="normal" if tipo == "PRECISION" else "disabled")
         self.e_pilha.configure(state="normal" if tipo == "STACKING" else "disabled")
+        self.e_tag_ref.configure(state="normal" if tipo == "STACKING" else "disabled")
         if not self.var_id.get().strip():
             self.var_id.set(self._sugerir_id(tipo))
 
@@ -164,6 +188,10 @@ class AbaArena(ttk.Frame):
         self.var_niveis.set(str(area.niveis))
         self.var_cavidades.set(str(area.cavidades))
         self.var_pilha.set(str(area.max_pilha))
+        if area.tipo == "PRECISION":
+            self.var_slot_tags.set(", ".join(map(str, area.tags_dos_slots())))
+        if area.tipo == "STACKING":
+            self.var_tag_ref.set(str(area.tag_ref))
 
     def _limpar(self) -> None:
         self.var_id.set("")
@@ -177,9 +205,22 @@ class AbaArena(ttk.Frame):
         except ValueError:
             raise ValueError(f"{nome} precisa ser numerico (recebido: {bruto!r})") from None
 
+    def _lista_inteiros(self, variavel: tk.StringVar, nome: str) -> list[int]:
+        bruto = variavel.get().replace(";", ",").replace(" ", ",")
+        partes = [p for p in bruto.split(",") if p.strip()]
+        try:
+            return [int(p) for p in partes]
+        except ValueError:
+            raise ValueError(f"{nome}: use inteiros separados por virgula (recebido: {bruto!r})") from None
+
     def _salvar_area(self) -> None:
         tipo = self._tipo_atual()
         try:
+            cavidades = self._numero(self.var_cavidades, "Slots", True) if tipo == "PRECISION" else 0
+            slot_tags = self._lista_inteiros(self.var_slot_tags, "Tags dos slots") if tipo == "PRECISION" else []
+            if tipo == "PRECISION" and not slot_tags:
+                slot_tags = [rules.TAG_SLOT_PP_BASE + i for i in range(cavidades)]
+            tag_ref = self._numero(self.var_tag_ref, "Tag de referencia", True) if tipo == "STACKING" else None
             area = ServiceArea(
                 id=self.var_id.get().strip().upper(),
                 tipo=tipo,
@@ -187,10 +228,11 @@ class AbaArena(ttk.Frame):
                 if tipo in COM_ALTURA else None,
                 lado_marcado=self.var_lado.get(),
                 niveis=self._numero(self.var_niveis, "Niveis", True),
-                cavidades=self._numero(self.var_cavidades, "Cavidades", True)
-                if tipo == "PRECISION" else 0,
+                cavidades=cavidades,
                 max_pilha=self._numero(self.var_pilha, "Pilha maxima", True)
                 if tipo == "STACKING" else 0,
+                slot_tags=slot_tags,
+                tag_referencia=tag_ref,
             )
         except ValueError as exc:
             messagebox.showerror("Campo invalido", str(exc), parent=self)
@@ -208,6 +250,12 @@ class AbaArena(ttk.Frame):
         else:
             self.meta.areas.append(area)
             self.app.registrar(f"Area {area.id} adicionada.")
+
+        # Tags fixas repetidas entre areas so aparecem na validacao da arena inteira.
+        erros_arena = [e for e in self.meta.validar() if "tag de referencia" in e]
+        if erros_arena:
+            messagebox.showwarning("Tags repetidas", "\n".join(erros_arena), parent=self)
+
         self._limpar()
         self.app.metaarena_mudou()
 
@@ -261,6 +309,14 @@ class AbaArena(ttk.Frame):
         self.app.metaarena_mudou()
 
     # ---------------------------------------------------------- atualizacao
+    @staticmethod
+    def _tags_legiveis(area: ServiceArea) -> str:
+        if area.tipo == "PRECISION":
+            return "slots " + ", ".join(map(str, area.tags_dos_slots()))
+        if area.tipo == "STACKING":
+            return f"centro {area.tag_ref}"
+        return "—"
+
     def atualizar(self) -> None:
         self.tabela.delete(*self.tabela.get_children())
         for area in self.meta.areas:
@@ -271,5 +327,6 @@ class AbaArena(ttk.Frame):
                     TIPO_LABEL.get(area.tipo, area.tipo),
                     "—" if area.altura_cm is None else f"{area.altura_cm} cm",
                     "marcado" if area.lado_marcado else "livre",
+                    self._tags_legiveis(area),
                 ),
             )

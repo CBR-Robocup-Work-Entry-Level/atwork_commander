@@ -1,6 +1,6 @@
-"""ATT2 — Advanced Transportation Test II (rulebook 5.4.3).
+"""ATT2 — Advanced Transportation Test II (rulebook 4.4.3).
 
-16 min, 7 areas ativas: 6 workstations/prateleiras balanceadas entre os dois
+20 min, 7 areas ativas: 6 workstations/prateleiras balanceadas entre os dois
 lados — com uma prateleira de cada lado, quando a arena permite — mais a mesa
 de precisao.
 
@@ -10,8 +10,9 @@ vermelhos de menor ID no container vermelho, os 2 azuis de maior ID no nivel
 superior da prateleira e os 2 restantes nas cavidades da mesa de precisao.
 Um obstaculo fisico, com nivel de bloqueio a criterio do TC.
 
-Como cada container recebe cubos da propria cor, o robo deduz o destino da
-leitura de cor: o arquivo de equipe nao diz qual container e' qual.
+Cada container recebe cubos da propria cor, e o arquivo de equipe diz
+explicitamente qual cubo entra em qual container e em qual slot da mesa de
+precisao cada um termina.
 """
 
 from __future__ import annotations
@@ -114,7 +115,7 @@ def gerar(meta: Metaarena, opcoes: Opcoes | None = None) -> Task:
 
     ctx.task.obstaculos = obstacles.gerar(PROVA, ctx.rng, ctx.task.ativas)
     ctx.builder.instrucao(
-        f"Cada ATTC da mesa de precisao vai na cavidade que casa com a sua tag ({pp.id}).",
+        f"Os slots de destino em {pp.id} estao no arquivo de equipe (tag do slot -> objeto).",
         f"Entrega na prateleira {prateleira.id}, nivel {rules.NIVEL_ENTREGA_SHELF}.",
     )
     ctx.espalhar_decoys()

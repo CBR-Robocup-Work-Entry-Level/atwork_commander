@@ -42,6 +42,7 @@ class Requisito:
     alturas: tuple[int, ...] | None = None
     min_ws: int = 0
     min_shelf: int = 0
+    min_stacking: int = 0
     balancear_lados: bool = False
     shelf_por_lado: bool = False
     cobrir_alturas: bool = False
@@ -58,8 +59,13 @@ def _penalidade(
 ) -> float:
     ws = [a for a in sel if a.tipo == "WORKSTATION"]
     shelves = [a for a in sel if a.tipo == "SHELF"]
+    stacking = [a for a in sel if a.tipo == "STACKING"]
 
-    p = PESO_TIPO * (max(0, req.min_ws - len(ws)) + max(0, req.min_shelf - len(shelves)))
+    p = PESO_TIPO * (
+        max(0, req.min_ws - len(ws))
+        + max(0, req.min_shelf - len(shelves))
+        + max(0, req.min_stacking - len(stacking))
+    )
 
     if req.balancear_lados:
         alvo = len(sel) // 2
@@ -107,6 +113,12 @@ def _desvios(sel: tuple[ServiceArea, ...], req: Requisito, alturas_arena: set[in
         fora.append(
             f"o rulebook pede {req.min_shelf} prateleira(s) ativa(s); a arena so permitiu "
             f"{len(shelves)}."
+        )
+    stacking = [a for a in sel if a.tipo == "STACKING"]
+    if len(stacking) < req.min_stacking:
+        fora.append(
+            f"a prova pede {req.min_stacking} area(s) de empilhamento ativa(s); a arena so "
+            f"permitiu {len(stacking)}."
         )
     if req.balancear_lados:
         marcadas = sum(a.lado_marcado for a in sel)

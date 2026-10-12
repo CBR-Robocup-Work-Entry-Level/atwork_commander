@@ -1,8 +1,9 @@
-"""FINAL — Final Test (rulebook 5.5).
+"""FINAL — Final Test (rulebook 4.5).
 
-20 min, todas as areas de servico montadas ficam ativas. Os 10 ATTCs saem em
-cinco duplas de destino: pilha na area de empilhamento, nivel superior da
-prateleira, mesa de precisao, container azul e container vermelho.
+30 min, todas as areas de servico montadas ficam ativas. Os 10 ATTCs saem em
+cinco duplas de destino: pilha sobre a tag de referencia da area de
+empilhamento, nivel superior da prateleira, slots da mesa de precisao,
+container azul e container vermelho.
 
 Dois ATTCs comecam no nivel inferior da prateleira — subir da prateleira de
 baixo para a de cima na mesma estante conta como transporte. Dois obstaculos
@@ -120,7 +121,8 @@ def gerar(meta: Metaarena, opcoes: Opcoes | None = None) -> Task:
 
     ctx.task.obstaculos = obstacles.gerar(PROVA, ctx.rng, ctx.task.ativas)
     ctx.builder.instrucao(
-        f"Pilha em {empilhamento.id}: {pilha[0]} embaixo, {pilha[1]} em cima.",
+        f"Pilha em {empilhamento.id}, sobre a tag de referencia {empilhamento.tag_ref}: "
+        f"{pilha[0]} embaixo, {pilha[1]} em cima.",
         "Os 2 ATTCs do nivel inferior da prateleira contam como transporte ao subirem "
         "para o nivel superior.",
     )

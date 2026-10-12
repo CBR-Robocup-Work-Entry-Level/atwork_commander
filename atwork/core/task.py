@@ -8,8 +8,8 @@ O `TaskBuilder` e' quem impede estado invalido de nascer. Ele recusa na hora:
 - passar da capacidade da zona de manipulacao da area;
 - colocar o mesmo cubo duas vezes na mesma fase;
 - juntar na mesma area dois cubos de mesmo ID e cores diferentes;
-- empilhar acima do limite da area de empilhamento;
-- usar nivel de prateleira ou cavidade em area que nao os tem.
+- empilhar fora da area de empilhamento ou acima do limite dela;
+- usar nivel de prateleira ou slot em area que nao os tem.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ class Item:
 
     cubo: Cubo
     nivel: str | None = None        # SHELF: BOTTOM | TOP
-    cavidade: int | None = None     # PRECISION: numero da cavidade
+    cavidade: int | None = None     # PRECISION: indice do slot (1 = mais a esquerda)
     container: str | None = None    # cor do container que o contem
     sobre: int | None = None        # ID do cubo imediatamente abaixo, na pilha
     decoy: bool = False
@@ -51,7 +51,7 @@ class Item:
         if self.nivel:
             partes.append(f"nivel {self.nivel}")
         if self.cavidade is not None:
-            partes.append(f"cavidade {self.cavidade}")
+            partes.append(f"slot {self.cavidade}")
         if self.sobre is not None:
             partes.append(f"empilhado sobre o cubo {self.sobre}")
         return ", ".join(partes) if partes else "sobre a mesa"
@@ -85,6 +85,9 @@ class Task:
     desvios: list[str] = field(default_factory=list)
     instrucoes: list[str] = field(default_factory=list)
     ids_unicos: bool = True     # IDs distintos entre os objetos de tarefa
+    # Areas cujo arranjo INICIAL nao e' revelado a equipe (AMT: a mesa de
+    # precisao). O arquivo de equipe lista os objetos presentes, mas nao os slots.
+    inicio_oculto: set[str] = field(default_factory=set)
 
     @property
     def ideal(self) -> bool:
@@ -272,13 +275,15 @@ class TaskBuilder:
                 raise GenerationError("nenhuma prova inicia com objetos dentro de container")
 
         if item.sobre is not None:
-            if area.tipo not in ("WORKSTATION", "STACKING"):
-                raise GenerationError(f"{area.id}: pilha so em workstation ou area de empilhamento")
+            if area.tipo != "STACKING":
+                raise GenerationError(
+                    f"{area.id}: pilha so na area de empilhamento, sobre a tag de referencia"
+                )
             if not any(i.id == item.sobre for i in itens):
                 raise GenerationError(f"{area.id}: base {item.sobre} da pilha nao esta na area")
             if any(i.sobre == item.sobre for i in itens):
                 raise GenerationError(f"{area.id}: cubo {item.sobre} ja tem outro empilhado nele")
-            limite = area.max_pilha if area.tipo == "STACKING" else 2
+            limite = area.max_pilha
             altura = 1 + sum(1 for i in itens if i.sobre is not None)
             if altura + 1 > max(limite, 2):
                 raise GenerationError(f"{area.id}: pilha passaria de {limite} cubos")
@@ -312,9 +317,11 @@ class TaskBuilder:
             self.colocar(fase, area_id, cubo, container=cor)
 
     def pilha(self, fase: str, area_id: str, cubos: list[Cubo]) -> None:
-        """Empilha os cubos na ordem dada: primeiro e a base, ultimo e o topo."""
+        """Empilha os cubos sobre a tag de referencia: primeiro e a base, ultimo e o topo."""
         if len(cubos) < 2:
             raise GenerationError("uma pilha precisa de pelo menos 2 cubos")
+        if self.task.area(area_id).tipo != "STACKING":
+            raise GenerationError(f"{area_id}: pilha so na area de empilhamento (ST)")
         self.colocar(fase, area_id, cubos[0])
         for base, acima in zip(cubos, cubos[1:]):
             self.colocar(fase, area_id, acima, sobre=base.id)
@@ -323,6 +330,11 @@ class TaskBuilder:
         """Decoys ficam onde foram postos: aparecem identicos no inicio e no fim."""
         for fase in FASES:
             self.colocar(fase, area_id, cubo, decoy=True)
+
+    def ocultar_inicio(self, area_id: str) -> None:
+        """Marca que o arranjo inicial desta area nao vai para o arquivo de equipe."""
+        self.task.area(area_id)
+        self.task.inicio_oculto.add(area_id)
 
     # ---------------------------------------------------------------- fecho
     def concluir(self) -> Task:

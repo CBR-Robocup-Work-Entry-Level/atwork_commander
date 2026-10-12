@@ -111,14 +111,26 @@ def _colocacoes(task: Task, erros: list[str]) -> None:
                 if item.sobre is not None:
                     if fase == "inicio":
                         erros.append(f"inicio/{area_id}: a arena nao comeca com pilha montada")
-                    if area.tipo not in ("WORKSTATION", "STACKING"):
-                        erros.append(f"{fase}/{area_id}: pilha em area {area.tipo}")
+                    if area.tipo != "STACKING":
+                        erros.append(
+                            f"{fase}/{area_id}: pilha em area {area.tipo} — so a area de "
+                            f"empilhamento recebe pilha"
+                        )
                     if not any(i.id == item.sobre for i in itens):
                         erros.append(f"{fase}/{area_id}: base {item.sobre} da pilha ausente")
 
             cavidades = [i.cavidade for i in itens if i.cavidade is not None]
             if len(set(cavidades)) != len(cavidades):
-                erros.append(f"{fase}/{area_id}: duas tags na mesma cavidade")
+                erros.append(f"{fase}/{area_id}: dois objetos no mesmo slot")
+            if area.tipo == "PRECISION" and any(i.cavidade is None for i in itens):
+                erros.append(f"{fase}/{area_id}: objeto na mesa de precisao sem slot")
+            if area.tipo == "STACKING":
+                bases = [i for i in itens if i.sobre is None]
+                if len(bases) > 1:
+                    erros.append(
+                        f"{fase}/{area_id}: {len(bases)} cubos soltos na area de empilhamento; "
+                        f"so a base da pilha fica sobre a tag de referencia"
+                    )
 
 
 def _containers(task: Task, erros: list[str]) -> None:
@@ -143,9 +155,9 @@ def _containers(task: Task, erros: list[str]) -> None:
                         f"tem de sair da cor do proprio cubo"
                     )
 
-    # Fora do container, um cubo nao pode terminar na area que hospeda o
-    # container da propria cor: sem instrucao de colocacao no arquivo de equipe,
-    # o robo nao teria como saber se ele fica dentro ou fora.
+    # Fora do container, um cubo nao termina na area que hospeda o container da
+    # propria cor. O arquivo de equipe ja diz explicitamente dentro/fora, mas a
+    # regra evita a disputa de arbitragem "estava encostado no container".
     for area_id, itens in task.fim.items():
         hospedados = task.containers_em(area_id)
         for item in itens:
@@ -156,6 +168,15 @@ def _containers(task: Task, erros: list[str]) -> None:
                     f"fim/{area_id}: cubo {item.cubo} termina fora do container, mas a area "
                     f"hospeda o container da mesma cor — destino ambiguo para a equipe"
                 )
+
+
+def _ocultos(task: Task, erros: list[str]) -> None:
+    for area_id in task.inicio_oculto:
+        area = task.meta.por_id(area_id)
+        if area is None or area_id not in task.ids_ativas:
+            erros.append(f"inicio oculto em area inexistente ou inativa: {area_id}")
+        elif area.tipo != "PRECISION":
+            erros.append(f"{area_id}: so a mesa de precisao pode ter arranjo inicial oculto")
 
 
 def _decoys(task: Task, erros: list[str]) -> None:
@@ -183,4 +204,5 @@ def validar_estrutura(task: Task) -> list[str]:
     _colocacoes(task, erros)
     _containers(task, erros)
     _decoys(task, erros)
+    _ocultos(task, erros)
     return erros

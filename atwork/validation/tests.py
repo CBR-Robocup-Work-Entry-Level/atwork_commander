@@ -97,6 +97,8 @@ def _amt(task: Task, erros: Erros, ideal: bool) -> None:
     inicial = {i.cavidade: i.id for i in task.itens_de(pp, "inicio")}
     if inicial == {i.cavidade: i.id for i in task.itens_de(pp, "fim")}:
         erros.append("o estado inicial nao pode ja estar resolvido")
+    if pp not in task.inicio_oculto:
+        erros.append("AMT: o arranjo inicial da mesa de precisao nao deve ir para a equipe")
 
 
 def _att1(task: Task, erros: Erros, ideal: bool) -> None:
@@ -104,6 +106,8 @@ def _att1(task: Task, erros: Erros, ideal: bool) -> None:
     pilhas = task.pilhas("fim")
     if len(pilhas) != 1 or len(pilhas[0]) != 2:
         erros.append("ATT1 monta exatamente uma pilha de 2 ATTCs")
+    if len(_em_tipo(task, "fim", "STACKING")) != 2:
+        erros.append("ATT1: a pilha fica na area de empilhamento, sobre a tag de referencia")
     if not ideal:
         return
     if len(task.ativas) != rules.N_AREAS_ALVO["ATT1"]:

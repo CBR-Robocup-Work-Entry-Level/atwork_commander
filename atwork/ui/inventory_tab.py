@@ -5,7 +5,7 @@ Um ATTC e o par (tag, cor). A grade abaixo e' literalmente esse par: marcar
 que estiver marcado, entao nenhuma task pede objeto que a organizacao nao tem.
 
 Marcar as duas cores do mesmo ID e permitido — o gerador so garante que os dois
-nunca cairao na mesma area de servico.
+nunca entram na mesma task (IDs sao unicos por task).
 """
 
 from __future__ import annotations
@@ -134,7 +134,7 @@ class AbaInventario(ttk.Frame):
         if repetidos:
             linhas.append(
                 f"Tags nas duas cores: {', '.join(map(str, repetidos))}. "
-                f"Nunca vao para a mesma area de servico."
+                f"Nunca entram juntas na mesma task."
             )
         if not self.meta.cubos:
             linhas.append(

@@ -5,6 +5,9 @@ cores, decoys e obstaculos, ele da a **coordenada de cada cubo** dentro da zona
 de manipulacao, em cm — sem isso "sobre a mesa" vira interpretacao do juiz de
 plantao e duas equipes acabam enfrentando espacamentos diferentes.
 
+Na mesa de precisao a posicao e' o slot (indice e tag de referencia); na area
+de empilhamento a base da pilha fica sobre a tag de referencia.
+
 Sai em YAML porque e' o formato que o operador le mais rapido: blocos aninhados,
 chave e valor na mesma linha, e o mesmo realce de sintaxe do arquivo de equipe.
 Os comentarios de secao fazem o papel dos titulos.
@@ -67,8 +70,15 @@ def _colocacao(task: Task, area_id: str, item: Item, ordem: int) -> dict:
         registro["empilhado_sobre_a_tag"] = item.sobre
         return registro
 
+    if area.tipo == "STACKING":
+        registro["sobre_a_tag_de_referencia"] = area.tag_ref
+        if item.decoy:
+            registro["decoy"] = True
+        return registro
+
     if item.cavidade is not None:
-        registro["cavidade"] = item.cavidade
+        registro["slot"] = item.cavidade
+        registro["tag_do_slot"] = area.tag_do_slot(item.cavidade)
         ponto = layout.ponto(area, item.cavidade)
     else:
         registro["posicao"] = ordem
@@ -90,6 +100,10 @@ def _area(task: Task, area_id: str, fase: str) -> dict:
     if area.altura_cm is not None:
         bloco["altura_cm"] = area.altura_cm
     bloco["lado"] = "marcado" if area.lado_marcado else "livre"
+    if area.tipo == "PRECISION":
+        bloco["tags_dos_slots"] = area.tags_dos_slots()
+    if area.tipo == "STACKING":
+        bloco["tag_de_referencia"] = area.tag_ref
 
     hospedados = task.containers_em(area_id)
     if hospedados:
@@ -110,6 +124,8 @@ def _area(task: Task, area_id: str, fase: str) -> dict:
     bloco["objetos"] = objetos or []
     if decoys:
         bloco["decoys"] = decoys
+    if fase == "inicio" and area_id in task.inicio_oculto:
+        bloco["arranjo_informado_a_equipe"] = False
     return bloco
 
 
@@ -169,11 +185,18 @@ def _medidas(task: Task) -> str:
         dados,
         "Toda coordenada abaixo esta em cm, medida na propria area.",
         "Use a mesma grade em todas as rodadas: e' o que mantem a consistencia",
-        "entre as equipes.",
+        "entre as equipes. Na mesa de precisao a posicao e' o slot; na area de",
+        "empilhamento a base da pilha fica centrada na tag de referencia.",
     )
 
 
 def _inventario(task: Task) -> str:
+    tags_fixas = {}
+    for area in task.ativas:
+        if area.tipo == "PRECISION":
+            tags_fixas[area.id] = {"slots_esq_para_dir": area.tags_dos_slots()}
+        elif area.tipo == "STACKING":
+            tags_fixas[area.id] = {"centro": area.tag_ref}
     dados = {
         "objetos_de_tarefa": [
             {"tag": c.id, "cor": _cor(c)} for c in sorted(task.cubos)
@@ -183,12 +206,15 @@ def _inventario(task: Task) -> str:
             {"cor": rules.CORES_PT[cor], "em": task.containers[cor]}
             for cor in rules.CORES if cor in task.containers
         ],
+        "tags_de_referencia_fixas": tags_fixas,
     }
     notas = ["Separe estes objetos antes de montar a arena."]
     if task.decoys:
         notas.append("Decoys nao aparecem no arquivo da equipe e ficam parados ate o fim.")
     if len(set(task.containers.values())) == 1 and task.containers:
         notas.append("Os dois containers vao na mesma workstation.")
+    if tags_fixas:
+        notas.append("Confira que as tags de referencia fixas estao coladas e legiveis.")
     return _secao("SEPARAR ANTES DA MONTAGEM", "inventario", dados, *notas)
 
 
@@ -201,6 +227,7 @@ def _montagem(task: Task) -> str:
         f"Tolerancia de {rules.TOLERANCIA_POSICAO_CM:g} cm em x e y.",
         "Objeto dentro de container fica solto: nao tem coordenada propria.",
         "Objeto empilhado usa a coordenada da base em que se apoia.",
+        "Slot 1 da mesa de precisao e' o mais a esquerda; a tag acima identifica-o.",
     )
 
 
@@ -270,6 +297,8 @@ def _conferencia(task: Task) -> str:
             for c in rules.CORES if c in task.containers
         )
         itens.append(f"containers no lugar ({alvo})")
+    if any(a.tipo in ("PRECISION", "STACKING") for a in task.ativas):
+        itens.append("tags de referencia fixas (slots da PP, centro da ST) coladas e legiveis")
     if task.obstaculos:
         itens.append(f"{len(task.obstaculos)} obstaculo(s) no chao, sem isolar nenhuma area")
     inativas = [a.id for a in task.meta.areas if a.id not in task.ids_ativas]

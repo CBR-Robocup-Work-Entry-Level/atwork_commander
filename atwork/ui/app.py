@@ -142,7 +142,7 @@ class AppCommander(tk.Tk):
             f"@Work Commander {__version__}\n\n"
             f"Gerador de tasks da RoboCup@Work Brasil (Entry-Level).\n"
             f"Cada geracao produz dois arquivos: o YAML oficial entregue as equipes e o "
-            f"guia de montagem em Markdown, que fica com o juiz.",
+            f"guia de montagem em YAML (planta da arena), que fica com o juiz.",
         )
 
     # ---------------------------------------------------------------- corpo

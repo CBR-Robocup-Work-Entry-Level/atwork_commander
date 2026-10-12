@@ -107,7 +107,7 @@ class AbaGerar(ttk.Frame):
             text="objetos de distracao — so no guia do juiz, nunca no arquivo da equipe, "
                  "e sempre com tag diferente das validas"
             if aceita else
-            f"{prova} acontece so na mesa de precisao, com todas as cavidades ocupadas: "
+            f"{prova} acontece so na mesa de precisao, com todos os slots ocupados: "
             f"nao ha onde por decoy."
         )
         self.atualizar()

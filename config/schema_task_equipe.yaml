@@ -1,15 +1,37 @@
 # =============================================================================
-# @Work Commander — CONTRATO DO ARQUIVO DE EQUIPE
+# @Work Commander — CONTRATO DO ARQUIVO DE EQUIPE (edicao 2026, contrato v2)
 # =============================================================================
 # Este arquivo documenta o formato do YAML entregue as equipes. Ele nao e' lido
 # pelo programa: e' a referencia de campo a campo para quem escreve o parser do
-# robo. O gerador de verdade esta em atwork/export/team_yaml.py.
+# robo. O gerador de verdade esta em atwork/export/team_yaml.py, e a funcao
+# `conferir()` do mesmo modulo checa as invariantes listadas aqui.
 #
-# Base: os exemplos oficiais da competicao (BMT.yaml, ATT1.yaml). Duas mudancas
-# vem das regras desta edicao e estao marcadas com [2026].
+# Base: os exemplos oficiais da competicao (BMT.yaml, ATT1.yaml). O esqueleto
+# (task_id, name, duration_min, active_service_areas, objects, containers,
+# start_state, finish_state) e' o mesmo. O que mudou nesta edicao esta
+# marcado com [2026].
 #
-# O guia do juiz e' outro documento, em Markdown, e traz o que NAO entra aqui:
-# cores dos ATTCs, decoys, obstaculos, areas inativas, seed e desvios de arena.
+# O guia do juiz e' outro documento e traz o que NAO entra aqui: cores dos
+# ATTCs, decoys, obstaculos, areas inativas, seed, coordenadas de montagem.
+#
+# -----------------------------------------------------------------------------
+# AS 5 REGRAS QUE RESOLVEM TODA AMBIGUIDADE
+# -----------------------------------------------------------------------------
+# 1. Um objeto e' identificado SO pelo ID da AprilTag. Dentro de uma task os IDs
+#    nunca se repetem (nem entre objetos e decoys). A arena pode ter o mesmo ID
+#    nas duas cores no estoque, mas o gerador nunca poe os dois na mesma task.
+#    Logo "cubo 4" e' sempre um cubo so.
+# 2. A cor dos ATTCs NAO aparece em `objects`. Identificar cor e' tarefa do robo.
+# 3. Containers nao tem ID: a identidade e' a COR + a workstation em que estao.
+#    No maximo um container de cada cor por workstation. Um cubo so entra no
+#    container da propria cor (garantia do gerador), e o arquivo diz
+#    explicitamente qual cubo entra em qual container.
+# 4. Toda posicao e' explicita. Em cada area, `obj_ids` e' o CONJUNTO de objetos
+#    presentes (ordem crescente, sem significado de posicao). As chaves de
+#    posicao (`table`, `containers`, `levels`, `slots`, `stack`) dizem
+#    exatamente onde cada um esta, e a uniao delas e' SEMPRE igual a `obj_ids`.
+# 5. Nada precisa ser hardcoded no robo: as tags de referencia fixas da arena
+#    (slots da mesa de precisao, centro da area de empilhamento) vao no arquivo.
 # =============================================================================
 
 task_id: ATT2                       # BMT | BTT1 | BTT2 | AMT | ATT1 | ATT2 | FINAL
@@ -22,68 +44,140 @@ duration_min: 20                    # fixo por prova: 6/10/10/15/20/20/30
 #   ST     area de empilhamento
 active_service_areas: [WS_1, WS_4, SH_2, PP]
 
-# Objetos de tarefa (ATTCs). O valor de `id` e' o ID da AprilTag colada no cubo,
-# entre 1 e 30.
-#
-# [2026] ATTC tem apenas ID e cor — o campo `type` deixou de existir. A cor NAO
-# aparece aqui: identificar cor e' responsabilidade do robo. Dentro de uma mesma
-# task os IDs nunca se repetem.
+# Objetos de tarefa (ATTCs). `id` e' o ID da AprilTag colada no cubo (1..30).
+# [2026] ATTC tem apenas ID e cor; o campo `type` deixou de existir e a cor
+# NAO e' informada. IDs unicos dentro da task.
 objects:
   - {id: 4}
   - {id: 9}
   - {id: 17}
+  - {id: 22}
 
-# [2026] Containers nao tem mais ID: a COR e' a identidade. O arquivo diz apenas
-# em que workstation cada um esta. Azul e vermelho podem dividir a mesma mesa.
-# Ausente nas provas que nao usam container.
-#
-# [2026] A constraint de container NAO nomeia cor: todo cubo vai para o container
-# da propria cor, entao dizer "the RED container" entregaria a cor do objeto —
-# justo o que este arquivo esconde. A frase enuncia a regra; o robo deduz o
-# destino da leitura de cor que ele mesmo faz.
+# [2026] Containers nao tem ID: a cor e' a identidade. `at` diz em que
+# workstation cada um esta. Azul e vermelho podem dividir a mesma mesa; nunca
+# dois da mesma cor na mesma mesa. Ausente nas provas sem container.
 containers:
   - {color: BLUE, at: WS_1}
   - {color: RED, at: WS_4}
 
+# [2026] Mesa(s) de precisao ativa(s): tag de referencia FIXA acima de cada
+# slot, listada da esquerda para a direita (olhando de frente para a mesa).
+# As tags usam IDs fora da faixa dos ATTCs. Ausente quando nao ha PP ativa.
+precision_tables:
+  PP:
+    slot_tags: [101, 102, 103, 104, 105, 106, 107]
+
+# [2026] Area(s) de empilhamento ativa(s): tag de referencia FIXA no centro da
+# zona; a pilha e' montada sobre ela. Ausente quando nao ha ST ativa.
+stacking_areas:
+  ST:
+    reference_tag: 200
+
+# -----------------------------------------------------------------------------
 # start_state e finish_state tem o mesmo formato: um mapa com exatamente as
 # areas ativas, mesmo as vazias. O conjunto de objetos e' identico nos dois
 # estados e igual a lista `objects`.
+#
+# Em cada area:
+#   obj_ids     [sempre]  TODOS os objetos de tarefa presentes na area, em
+#                         ordem crescente. NAO indica posicao.
+#   table       [WS, ST]  soltos sobre a mesa, da ESQUERDA para a DIREITA.
+#   containers  [WS]      so quando a WS hospeda container: cor -> objetos
+#                         dentro dele (sem ordem). Chave presente = container
+#                         esta nesta mesa, mesmo que vazio.
+#   levels      [SH]      BOTTOM e TOP, cada nivel da esquerda para a direita.
+#                         Rulebook: coleta e' no BOTTOM, entrega e' no TOP.
+#   slots       [PP]      tag do slot -> ID do objeto, ou null = slot vazio.
+#                         As chaves seguem a ordem de precision_tables.
+#                         `slots: null` (so no AMT, so no start_state) = o
+#                         arranjo inicial NAO e' informado; o robo descobre.
+#   stack       [ST]      pilha sobre a tag de referencia, da BASE ao TOPO.
+#
+# Invariante: table + containers + levels + slots + stack == obj_ids.
+# -----------------------------------------------------------------------------
 start_state:
   WS_1:
-    # Ordem = posicao dos objetos da esquerda para a direita na zona de
-    # manipulacao, olhando de frente para a area.
     obj_ids: [4, 9]
-    # [2026] Antes era `cont_ids` com inteiros. O nome mudou junto com o
-    # conteudo, de proposito: um parser que esperava numero falha alto em vez de
-    # ler lixo.
-    cont_colors: [BLUE]
+    table: [9, 4]                   # 9 e' o mais a esquerda
+    containers:
+      BLUE: []                      # container azul esta aqui, vazio
   WS_4:
-    obj_ids: [17]
-    cont_colors: [RED]
+    obj_ids: [17, 22]
+    table: [22, 17]
+    containers:
+      RED: []
   SH_2:
     obj_ids: []
+    levels:
+      BOTTOM: []
+      TOP: []
   PP:
     obj_ids: []
+    slots: {101: null, 102: null, 103: null, 104: null, 105: null, 106: null, 107: null}
 
 finish_state:
   WS_1:
-    obj_ids: [17]
-    cont_colors: [BLUE]
+    obj_ids: [4]
+    table: []
+    containers:
+      BLUE: [4]                     # cubo 4 dentro do container azul
   WS_4:
-    obj_ids: []
-    cont_colors: [RED]
+    obj_ids: [17]
+    table: []
+    containers:
+      RED: [17]                     # cubo 17 dentro do container vermelho
   SH_2:
     obj_ids: [9]
+    levels:
+      BOTTOM: []
+      TOP: [9]                      # entrega sempre no nivel superior
   PP:
-    obj_ids: [4]
+    obj_ids: [22]
+    slots: {101: null, 102: null, 103: 22, 104: null, 105: null, 106: null, 107: null}
 
-# NAO existe bloco `constraints`. Como colocar cada objeto sai do rulebook, nao
-# da task, e repetir a regra a cada arquivo so faria ruido:
+# =============================================================================
+# TRECHOS DE OUTRAS PROVAS
+# =============================================================================
+# --- AMT (Advanced Manipulation Test): so a mesa de precisao e' ativa. --------
+# O arquivo lista os 6 objetos, mas o arranjo inicial e' escondido. O estado
+# final e' explicito: ordem crescente da esquerda para a direita, slot da ponta
+# direita vazio.
 #
-#   - cubo entra no container da PROPRIA cor;
-#   - entrega em prateleira e' no nivel superior, coleta e' no inferior;
-#   - na mesa de precisao, cada tag vai na cavidade que casa com ela;
-#   - no AMT, ordem numerica crescente da esquerda para a direita.
+#   objects: [{id: 1}, {id: 2}, {id: 3}, {id: 4}, {id: 5}, {id: 6}]
+#   precision_tables:
+#     PP: {slot_tags: [101, 102, 103, 104, 105, 106, 107]}
+#   start_state:
+#     PP:
+#       obj_ids: [1, 2, 3, 4, 5, 6]
+#       slots: null                 # arranjo inicial nao informado
+#   finish_state:
+#     PP:
+#       obj_ids: [1, 2, 3, 4, 5, 6]
+#       slots: {101: 1, 102: 2, 103: 3, 104: 4, 105: 5, 106: 6, 107: null}
 #
-# O gerador ainda garante que a leitura seja unica: nenhum cubo termina solto na
-# area que hospeda o container da mesma cor, porque ai as duas leituras caberiam.
+# --- ATT1 / FINAL: pilha na area de empilhamento. ----------------------------
+#   stacking_areas:
+#     ST: {reference_tag: 200}
+#   finish_state:
+#     ST:
+#       obj_ids: [8, 13]
+#       stack: [13, 8]              # 13 e' a base (sobre a tag 200), 8 fica em cima
+#
+# --- FINAL: coleta na prateleira de baixo, entrega na de cima. ---------------
+#   start_state:
+#     SH_1:
+#       obj_ids: [3, 11]
+#       levels: {BOTTOM: [11, 3], TOP: []}
+#   finish_state:
+#     SH_1:
+#       obj_ids: [25]
+#       levels: {BOTTOM: [], TOP: [25]}
+#
+# --- BMT / BTT1 / BTT2: so workstations, sem container. ----------------------
+#   start_state:
+#     WS_3:
+#       obj_ids: [2, 7, 19, 28]
+#       table: [19, 2, 28, 7]       # os 4 em linha, nesta ordem, esq. -> dir.
+#
+# NAO existe bloco `constraints`: tudo que antes era texto livre agora e'
+# posicao explicita nos estados.

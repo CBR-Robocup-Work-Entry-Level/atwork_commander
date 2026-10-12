@@ -1,219 +1,59 @@
 {
-  "schema_version": 4,
-  "nome": "arena_exemplo",
+  "schema_version": 5,
+  "nome": "CBR 2026 Entry-Level (base: RoboCup 2025 Salvador, 10 m x 7,5 m)",
   "areas": [
-    {
-      "id": "WS_1",
-      "tipo": "WORKSTATION",
-      "altura_cm": 0,
-      "lado_marcado": true,
-      "niveis": 2,
-      "cavidades": 0,
-      "max_pilha": 0
-    },
-    {
-      "id": "WS_2",
-      "tipo": "WORKSTATION",
-      "altura_cm": 5,
-      "lado_marcado": true,
-      "niveis": 2,
-      "cavidades": 0,
-      "max_pilha": 0
-    },
-    {
-      "id": "WS_3",
-      "tipo": "WORKSTATION",
-      "altura_cm": 10,
-      "lado_marcado": true,
-      "niveis": 2,
-      "cavidades": 0,
-      "max_pilha": 0
-    },
-    {
-      "id": "WS_4",
-      "tipo": "WORKSTATION",
-      "altura_cm": 10,
-      "lado_marcado": false,
-      "niveis": 2,
-      "cavidades": 0,
-      "max_pilha": 0
-    },
-    {
-      "id": "WS_5",
-      "tipo": "WORKSTATION",
-      "altura_cm": 15,
-      "lado_marcado": false,
-      "niveis": 2,
-      "cavidades": 0,
-      "max_pilha": 0
-    },
-    {
-      "id": "WS_6",
-      "tipo": "WORKSTATION",
-      "altura_cm": 15,
-      "lado_marcado": false,
-      "niveis": 2,
-      "cavidades": 0,
-      "max_pilha": 0
-    },
-    {
-      "id": "SH_1",
-      "tipo": "SHELF",
-      "altura_cm": null,
-      "lado_marcado": true,
-      "niveis": 2,
-      "cavidades": 0,
-      "max_pilha": 0
-    },
-    {
-      "id": "SH_2",
-      "tipo": "SHELF",
-      "altura_cm": null,
-      "lado_marcado": false,
-      "niveis": 2,
-      "cavidades": 0,
-      "max_pilha": 0
-    },
-    {
-      "id": "PP",
-      "tipo": "PRECISION",
-      "altura_cm": null,
-      "lado_marcado": true,
-      "niveis": 2,
-      "cavidades": 7,
-      "max_pilha": 0
-    },
-    {
-      "id": "ST",
-      "tipo": "STACKING",
-      "altura_cm": 5,
-      "lado_marcado": false,
-      "niveis": 2,
-      "cavidades": 0,
-      "max_pilha": 3
-    }
+    {"id": "WS_1",  "tipo": "WORKSTATION", "altura_cm": 0,  "lado_marcado": true,  "niveis": 2, "cavidades": 0, "max_pilha": 0},
+    {"id": "WS_2",  "tipo": "WORKSTATION", "altura_cm": 10, "lado_marcado": true,  "niveis": 2, "cavidades": 0, "max_pilha": 0},
+    {"id": "WS_3",  "tipo": "WORKSTATION", "altura_cm": 15, "lado_marcado": true,  "niveis": 2, "cavidades": 0, "max_pilha": 0},
+    {"id": "WS_4",  "tipo": "WORKSTATION", "altura_cm": 15, "lado_marcado": true,  "niveis": 2, "cavidades": 0, "max_pilha": 0},
+    {"id": "WS_5",  "tipo": "WORKSTATION", "altura_cm": 5,  "lado_marcado": true,  "niveis": 2, "cavidades": 0, "max_pilha": 0},
+    {"id": "WS_6",  "tipo": "WORKSTATION", "altura_cm": 5,  "lado_marcado": true,  "niveis": 2, "cavidades": 0, "max_pilha": 0},
+    {"id": "WS_7",  "tipo": "WORKSTATION", "altura_cm": 10, "lado_marcado": true,  "niveis": 2, "cavidades": 0, "max_pilha": 0},
+    {"id": "SH_1",  "tipo": "SHELF",       "altura_cm": null, "lado_marcado": true, "niveis": 2, "cavidades": 0, "max_pilha": 0},
+    {"id": "WS_8",  "tipo": "WORKSTATION", "altura_cm": 0,  "lado_marcado": false, "niveis": 2, "cavidades": 0, "max_pilha": 0},
+    {"id": "WS_9",  "tipo": "WORKSTATION", "altura_cm": 0,  "lado_marcado": false, "niveis": 2, "cavidades": 0, "max_pilha": 0},
+    {"id": "WS_10", "tipo": "WORKSTATION", "altura_cm": 15, "lado_marcado": false, "niveis": 2, "cavidades": 0, "max_pilha": 0},
+    {"id": "WS_11", "tipo": "WORKSTATION", "altura_cm": 15, "lado_marcado": false, "niveis": 2, "cavidades": 0, "max_pilha": 0},
+    {"id": "WS_12", "tipo": "WORKSTATION", "altura_cm": 10, "lado_marcado": false, "niveis": 2, "cavidades": 0, "max_pilha": 0},
+    {"id": "WS_13", "tipo": "WORKSTATION", "altura_cm": 5,  "lado_marcado": false, "niveis": 2, "cavidades": 0, "max_pilha": 0},
+    {"id": "WS_14", "tipo": "WORKSTATION", "altura_cm": 10, "lado_marcado": false, "niveis": 2, "cavidades": 0, "max_pilha": 0},
+    {"id": "SH_2",  "tipo": "SHELF",       "altura_cm": null, "lado_marcado": false, "niveis": 2, "cavidades": 0, "max_pilha": 0},
+    {"id": "PP",    "tipo": "PRECISION",   "altura_cm": null, "lado_marcado": false, "niveis": 2, "cavidades": 7, "max_pilha": 0,
+     "slot_tags": [101, 102, 103, 104, 105, 106, 107]},
+    {"id": "ST",    "tipo": "STACKING",    "altura_cm": 10, "lado_marcado": false, "niveis": 2, "cavidades": 0, "max_pilha": 3,
+     "tag_referencia": 200}
   ],
   "cubos": [
-    {
-      "id": 1,
-      "cor": "BLUE"
-    },
-    {
-      "id": 2,
-      "cor": "BLUE"
-    },
-    {
-      "id": 3,
-      "cor": "BLUE"
-    },
-    {
-      "id": 4,
-      "cor": "BLUE"
-    },
-    {
-      "id": 5,
-      "cor": "BLUE"
-    },
-    {
-      "id": 6,
-      "cor": "BLUE"
-    },
-    {
-      "id": 7,
-      "cor": "BLUE"
-    },
-    {
-      "id": 8,
-      "cor": "BLUE"
-    },
-    {
-      "id": 9,
-      "cor": "BLUE"
-    },
-    {
-      "id": 10,
-      "cor": "BLUE"
-    },
-    {
-      "id": 11,
-      "cor": "BLUE"
-    },
-    {
-      "id": 12,
-      "cor": "BLUE"
-    },
-    {
-      "id": 1,
-      "cor": "RED"
-    },
-    {
-      "id": 2,
-      "cor": "RED"
-    },
-    {
-      "id": 3,
-      "cor": "RED"
-    },
-    {
-      "id": 4,
-      "cor": "RED"
-    },
-    {
-      "id": 5,
-      "cor": "RED"
-    },
-    {
-      "id": 6,
-      "cor": "RED"
-    },
-    {
-      "id": 13,
-      "cor": "RED"
-    },
-    {
-      "id": 14,
-      "cor": "RED"
-    },
-    {
-      "id": 15,
-      "cor": "RED"
-    },
-    {
-      "id": 16,
-      "cor": "RED"
-    },
-    {
-      "id": 17,
-      "cor": "RED"
-    },
-    {
-      "id": 18,
-      "cor": "RED"
-    },
-    {
-      "id": 19,
-      "cor": "BLUE"
-    },
-    {
-      "id": 20,
-      "cor": "BLUE"
-    },
-    {
-      "id": 21,
-      "cor": "RED"
-    },
-    {
-      "id": 22,
-      "cor": "RED"
-    },
-    {
-      "id": 23,
-      "cor": "BLUE"
-    },
-    {
-      "id": 24,
-      "cor": "RED"
-    }
+    {"id": 1, "cor": "BLUE"}, {"id": 1, "cor": "RED"},
+    {"id": 2, "cor": "BLUE"}, {"id": 2, "cor": "RED"},
+    {"id": 3, "cor": "BLUE"}, {"id": 3, "cor": "RED"},
+    {"id": 4, "cor": "BLUE"}, {"id": 4, "cor": "RED"},
+    {"id": 5, "cor": "BLUE"}, {"id": 5, "cor": "RED"},
+    {"id": 6, "cor": "BLUE"}, {"id": 6, "cor": "RED"},
+    {"id": 7, "cor": "BLUE"},
+    {"id": 8, "cor": "BLUE"},
+    {"id": 9, "cor": "BLUE"},
+    {"id": 10, "cor": "BLUE"},
+    {"id": 11, "cor": "BLUE"},
+    {"id": 12, "cor": "BLUE"},
+    {"id": 13, "cor": "BLUE"},
+    {"id": 14, "cor": "BLUE"},
+    {"id": 15, "cor": "BLUE"},
+    {"id": 16, "cor": "RED"},
+    {"id": 17, "cor": "RED"},
+    {"id": 18, "cor": "RED"},
+    {"id": 19, "cor": "RED"},
+    {"id": 20, "cor": "RED"},
+    {"id": 21, "cor": "RED"},
+    {"id": 22, "cor": "RED"},
+    {"id": 23, "cor": "RED"},
+    {"id": 24, "cor": "RED"},
+    {"id": 25, "cor": "RED"},
+    {"id": 26, "cor": "RED"},
+    {"id": 27, "cor": "RED"},
+    {"id": 28, "cor": "RED"},
+    {"id": 29, "cor": "RED"},
+    {"id": 30, "cor": "RED"}
   ],
   "containers": {
     "BLUE": 1,
