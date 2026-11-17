@@ -40,8 +40,8 @@ def _identidade(task: Task, erros: list[str]) -> None:
 
     if task.ids_unicos and len(ids_objetos) != len(task.cubos):
         erros.append(
-            "ha objetos de tarefa com o mesmo ID: o arquivo de equipe nao revela cor "
-            "e ficaria ambiguo"
+            "ha objetos de tarefa com o mesmo ID: as chaves de posicao do arquivo de "
+            "equipe referenciam o objeto so pelo ID e ficariam ambiguas"
         )
 
     for cubo in todos:
@@ -111,10 +111,9 @@ def _colocacoes(task: Task, erros: list[str]) -> None:
                 if item.sobre is not None:
                     if fase == "inicio":
                         erros.append(f"inicio/{area_id}: a arena nao comeca com pilha montada")
-                    if area.tipo != "STACKING":
+                    if area_id != task.empilhamento:
                         erros.append(
-                            f"{fase}/{area_id}: pilha em area {area.tipo} — so a area de "
-                            f"empilhamento recebe pilha"
+                            f"{fase}/{area_id}: pilha fora da zona de empilhamento em uso"
                         )
                     if not any(i.id == item.sobre for i in itens):
                         erros.append(f"{fase}/{area_id}: base {item.sobre} da pilha ausente")
@@ -124,12 +123,20 @@ def _colocacoes(task: Task, erros: list[str]) -> None:
                 erros.append(f"{fase}/{area_id}: dois objetos no mesmo slot")
             if area.tipo == "PRECISION" and any(i.cavidade is None for i in itens):
                 erros.append(f"{fase}/{area_id}: objeto na mesa de precisao sem slot")
-            if area.tipo == "STACKING":
+            if area_id == task.empilhamento:
                 bases = [i for i in itens if i.sobre is None]
                 if len(bases) > 1:
                     erros.append(
-                        f"{fase}/{area_id}: {len(bases)} cubos soltos na area de empilhamento; "
+                        f"{fase}/{area_id}: {len(bases)} cubos soltos na zona de empilhamento; "
                         f"so a base da pilha fica sobre a tag de referencia"
+                    )
+                if fase == "inicio" and itens:
+                    erros.append(
+                        f"inicio/{area_id}: a mesa da zona de empilhamento comeca vazia"
+                    )
+                if any(i.decoy or i.container is not None for i in itens):
+                    erros.append(
+                        f"{fase}/{area_id}: a mesa da zona de empilhamento so recebe a pilha"
                     )
 
 
@@ -143,8 +150,8 @@ def _containers(task: Task, erros: list[str]) -> None:
         elif area_id not in task.ids_ativas:
             erros.append(f"container {cor}: workstation {area_id} nao esta ativa")
 
-    # Todo cubo dentro de um container precisa ser da cor dele: e' o que permite
-    # ao robo deduzir o destino sem que o arquivo de equipe revele a cor.
+    # Todo cubo dentro de um container precisa ser da cor dele (rulebook 4.4.3
+    # e 4.5: objeto azul no container azul, vermelho no vermelho).
     for fase in FASES:
         for itens in task.estado(fase).values():
             for item in itens:
@@ -168,6 +175,20 @@ def _containers(task: Task, erros: list[str]) -> None:
                     f"fim/{area_id}: cubo {item.cubo} termina fora do container, mas a area "
                     f"hospeda o container da mesma cor — destino ambiguo para a equipe"
                 )
+
+
+def _empilhamento(task: Task, erros: list[str]) -> None:
+    if task.empilhamento is None:
+        return
+    area = task.meta.por_id(task.empilhamento)
+    if area is None or not area.empilhamento:
+        erros.append(f"{task.empilhamento}: nao hospeda a zona de empilhamento")
+    elif task.empilhamento not in task.ids_ativas:
+        erros.append(f"{task.empilhamento}: zona de empilhamento em area inativa")
+    if task.empilhamento in task.containers.values():
+        erros.append(
+            f"{task.empilhamento}: a mesa da zona de empilhamento nao hospeda container"
+        )
 
 
 def _ocultos(task: Task, erros: list[str]) -> None:
@@ -203,6 +224,7 @@ def validar_estrutura(task: Task) -> list[str]:
     _conservacao(task, erros)
     _colocacoes(task, erros)
     _containers(task, erros)
+    _empilhamento(task, erros)
     _decoys(task, erros)
     _ocultos(task, erros)
     return erros

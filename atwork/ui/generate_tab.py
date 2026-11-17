@@ -12,7 +12,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 from atwork import generators, rules
-from atwork.arena.model import Metaarena
+from atwork.arena.model import Metaarena, MetaarenaError
 from atwork.core.errors import GenerationError
 from atwork.core.task import Task
 from atwork.ui import preview_dialog
@@ -21,15 +21,17 @@ from atwork.ui.widgets import CORES_ESTADO
 
 ROTULO_PROVA = {p: f"{p} — {rules.NOMES[p]} ({rules.DURACAO_MIN[p]} min)" for p in rules.PROVAS}
 PROVA_DE_ROTULO = {v: k for k, v in ROTULO_PROVA.items()}
+SEM_ZONA = "(nenhuma mesa)"
 
 
 class AbaGerar(ttk.Frame):
     def __init__(self, pai: tk.Misc, app):
-        super().__init__(pai, padding=12)
+        super().__init__(pai, padding=theme.px(16))
         self.app = app
         self.var_prova = tk.StringVar(value=ROTULO_PROVA[rules.PROVAS[0]])
         self.var_seed = tk.StringVar()
         self.var_decoys = tk.IntVar(value=rules.N_DECOYS_PADRAO[rules.PROVAS[0]])
+        self.var_zona = tk.StringVar()
         self._montar()
         self._ao_trocar_prova()
 
@@ -80,20 +82,34 @@ class AbaGerar(ttk.Frame):
             style="CartaoFraco.TLabel",
         ).pack(side="left", padx=(8, 0))
 
-        estado = ttk.LabelFrame(self, text="Situacao da arena para esta prova", padding=10)
+        ttk.Label(escolha, text="Zona de empilhamento").grid(
+            row=3, column=0, sticky="w", padx=(0, 8), pady=(8, 0)
+        )
+        linha_zona = ttk.Frame(escolha)
+        linha_zona.grid(row=3, column=1, sticky="w", pady=(8, 0))
+        self.cb_zona = ttk.Combobox(
+            linha_zona, textvariable=self.var_zona, state="readonly", width=22
+        )
+        self.cb_zona.pack(side="left")
+        self.cb_zona.bind("<<ComboboxSelected>>", self._ao_trocar_zona)
+        self.lbl_zona = ttk.Label(linha_zona, text="", style="CartaoFraco.TLabel")
+        self.lbl_zona.pack(side="left", padx=(8, 0))
+
+        estado = ttk.LabelFrame(self, text="Situação da arena para esta prova", padding=10)
         estado.grid(row=1, column=0, sticky="we", pady=(12, 0))
         estado.columnconfigure(0, weight=1)
         self.lbl_estado = ttk.Label(estado, text="", style="Subtitulo.TLabel")
         self.lbl_estado.grid(row=0, column=0, sticky="w")
         self.lbl_detalhe = ttk.Label(
-            estado, text="", justify="left", wraplength=820, style="Cartao.TLabel"
+            estado, text="", justify="left", wraplength=theme.px(820), style="Cartao.TLabel"
         )
         self.lbl_detalhe.grid(row=1, column=0, sticky="w", pady=(6, 0))
+        theme.quebra_automatica(self.lbl_detalhe, estado, margem=40)
 
         acoes = ttk.Frame(self)
         acoes.grid(row=2, column=0, sticky="n", pady=16)
         self.btn_gerar = ttk.Button(
-            acoes, text="Gerar e pre-visualizar", command=self._gerar, style="Acento.TButton"
+            acoes, text="Gerar e pré-visualizar", command=self._gerar, style="Acento.TButton"
         )
         self.btn_gerar.pack()
 
@@ -104,13 +120,46 @@ class AbaGerar(ttk.Frame):
         aceita = rules.ACEITA_DECOYS[prova]
         self.sp_decoys.configure(state="normal" if aceita else "disabled")
         self.lbl_decoys.configure(
-            text="objetos de distracao — so no guia do juiz, nunca no arquivo da equipe, "
-                 "e sempre com tag diferente das validas"
+            text="objetos de distração — só no guia do juiz, nunca no arquivo da equipe, "
+                 "e sempre com tag diferente das válidas"
             if aceita else
-            f"{prova} acontece so na mesa de precisao, com todos os slots ocupados: "
-            f"nao ha onde por decoy."
+            f"{prova} acontece só na mesa de precisão, com todos os slots ocupados: "
+            f"não há onde por decoy."
         )
         self.atualizar()
+
+    def _rotulo_zona(self, area) -> str:
+        return f"{area.id} ({area.altura_cm} cm, lado {area.lado.lower()})"
+
+    def _ao_trocar_zona(self, _evento=None) -> None:
+        """A workstation da zona de empilhamento e' parametro do operador, nunca sorteio."""
+        escolhida = self.var_zona.get()
+        alvo = None if escolhida == SEM_ZONA else escolhida.split(" ")[0]
+        atual = self.meta.empilhamento()
+        if (atual.id if atual else None) == alvo:
+            return
+        try:
+            self.meta.definir_empilhamento(alvo)
+        except MetaarenaError as exc:
+            messagebox.showerror("Zona de empilhamento", str(exc), parent=self)
+            self.atualizar()
+            return
+        self.app.registrar(
+            f"Zona de empilhamento: {alvo or 'nenhuma mesa'} "
+            f"(salve a metaarena para manter a escolha)."
+        )
+        self.app.metaarena_mudou()
+
+    def _atualizar_zona(self) -> None:
+        candidatas = self.meta.candidatas_a_empilhamento()
+        self.cb_zona.configure(values=[SEM_ZONA] + [self._rotulo_zona(a) for a in candidatas])
+        atual = self.meta.empilhamento()
+        self.var_zona.set(self._rotulo_zona(atual) if atual else SEM_ZONA)
+        usa = self.prova() in rules.PROVAS_COM_EMPILHAMENTO
+        self.lbl_zona.configure(
+            text="nesta prova a mesa só recebe a pilha" if usa
+            else "nesta prova não há pilha: a mesa é uma workstation comum"
+        )
 
     def _opcoes(self, seed: int | None) -> generators.Opcoes:
         return generators.Opcoes(seed=seed, decoys=max(0, self.var_decoys.get()))
@@ -121,7 +170,7 @@ class AbaGerar(ttk.Frame):
             return None
         if not bruto.isdigit():
             messagebox.showerror(
-                "Seed invalida", "A seed precisa ser um numero inteiro positivo.", parent=self
+                "Seed inválida", "A seed precisa ser um número inteiro positivo.", parent=self
             )
             raise ValueError(bruto)
         return int(bruto)
@@ -130,20 +179,20 @@ class AbaGerar(ttk.Frame):
         try:
             return generators.gerar(self.meta, self.prova(), self._opcoes(seed))
         except GenerationError as exc:
-            messagebox.showerror("Nao foi possivel gerar", str(exc), parent=self)
+            messagebox.showerror("Não foi possível gerar", str(exc), parent=self)
             self.app.registrar(f"[{self.prova()}] erro: {exc}", "erro")
             return None
 
     def _gerar(self) -> None:
         erros = self.meta.validar()
         if erros:
-            messagebox.showerror("Metaarena invalida", "\n".join(erros), parent=self)
+            messagebox.showerror("Metaarena inválida", "\n".join(erros), parent=self)
             return
         impedimentos = generators.bloqueios(self.meta, self.prova())
         if impedimentos:
             messagebox.showerror(
                 "Arena incompativel",
-                "Esta prova nao pode ser gerada com a arena cadastrada:\n\n- "
+                "Esta prova não pode ser gerada com a arena cadastrada:\n\n- "
                 + "\n- ".join(impedimentos),
                 parent=self,
             )
@@ -171,9 +220,10 @@ class AbaGerar(ttk.Frame):
     # ---------------------------------------------------------- atualizacao
     def atualizar(self) -> None:
         prova = self.prova()
+        self._atualizar_zona()
         erros_meta = self.meta.validar()
         if erros_meta:
-            self.lbl_estado.configure(text="Metaarena invalida", foreground=CORES_ESTADO["erro"])
+            self.lbl_estado.configure(text="Metaarena inválida", foreground=CORES_ESTADO["erro"])
             self.lbl_detalhe.configure(text="\n".join(f"• {e}" for e in erros_meta))
             self.btn_gerar.configure(state="disabled")
             return
@@ -181,7 +231,7 @@ class AbaGerar(ttk.Frame):
         impedimentos = generators.bloqueios(self.meta, prova)
         if impedimentos:
             self.lbl_estado.configure(
-                text="Nao da para gerar esta prova", foreground=CORES_ESTADO["erro"]
+                text="Não da para gerar esta prova", foreground=CORES_ESTADO["erro"]
             )
             self.lbl_detalhe.configure(text="\n".join(f"• {i}" for i in impedimentos))
             self.btn_gerar.configure(state="disabled")
@@ -191,10 +241,10 @@ class AbaGerar(ttk.Frame):
         avisos = self.meta.avisos()
         if avisos:
             self.lbl_estado.configure(
-                text="Pode gerar, com concessoes", foreground=CORES_ESTADO["aviso"]
+                text="Pode gerar, com concessões", foreground=CORES_ESTADO["aviso"]
             )
             self.lbl_detalhe.configure(
-                text="A task sai do mesmo jeito, o mais proximo possivel do rulebook, e o guia "
+                text="A task sai do mesmo jeito, o mais próximo possível do rulebook, e o guia "
                      "do juiz lista cada desvio.\n"
                      + "\n".join(f"• {a}" for a in avisos)
             )

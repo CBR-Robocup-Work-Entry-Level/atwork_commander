@@ -16,6 +16,7 @@ from tkinter import ttk
 
 from atwork import rules
 from atwork.arena.model import Cubo, Metaarena
+from atwork.ui import theme
 
 POR_BLOCO = 10
 ABREVIACAO = {"BLUE": "A", "RED": "V"}
@@ -23,7 +24,7 @@ ABREVIACAO = {"BLUE": "A", "RED": "V"}
 
 class AbaInventario(ttk.Frame):
     def __init__(self, pai: tk.Misc, app):
-        super().__init__(pai, padding=8)
+        super().__init__(pai, padding=theme.px(12))
         self.app = app
         self._silencioso = False
         self.marcado: dict[tuple[int, str], tk.BooleanVar] = {}
@@ -40,13 +41,13 @@ class AbaInventario(ttk.Frame):
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
 
-        grade = ttk.LabelFrame(self, text="ATTCs disponiveis (A = azul, V = vermelho)", padding=8)
+        grade = ttk.LabelFrame(self, text="ATTCs disponíveis (A = azul, V = vermelho)", padding=8)
         grade.grid(row=0, column=0, sticky="nsew")
 
         blocos = (rules.ID_MAX - rules.ID_MIN + 1 + POR_BLOCO - 1) // POR_BLOCO
         for bloco in range(blocos):
             quadro = ttk.Frame(grade)
-            quadro.grid(row=0, column=bloco, sticky="n", padx=(0, 18))
+            quadro.grid(row=0, column=bloco, sticky="n", padx=(0, theme.px(36)))
             ttk.Label(quadro, text="Tag").grid(row=0, column=0, padx=(0, 6))
             ttk.Label(quadro, text="A").grid(row=0, column=1)
             ttk.Label(quadro, text="V").grid(row=0, column=2)
@@ -66,13 +67,13 @@ class AbaInventario(ttk.Frame):
         lateral = ttk.Frame(self)
         lateral.grid(row=0, column=1, sticky="ns", padx=(12, 0))
 
-        atalhos = ttk.LabelFrame(lateral, text="Preenchimento rapido", padding=8)
+        atalhos = ttk.LabelFrame(lateral, text="Preenchimento rápido", padding=8)
         atalhos.pack(fill="x")
         ttk.Button(atalhos, text="Marcar tudo (1..30 nas 2 cores)",
                    command=lambda: self._todos(True)).pack(fill="x", pady=2)
         ttk.Button(atalhos, text="Desmarcar tudo",
                    command=lambda: self._todos(False)).pack(fill="x", pady=2)
-        ttk.Button(atalhos, text="So uma cor por tag (sorteia)",
+        ttk.Button(atalhos, text="Só uma cor por tag (sorteia)",
                    command=self._uma_cor_por_tag).pack(fill="x", pady=2)
 
         containers = ttk.LabelFrame(lateral, text="Containers", padding=8)
@@ -89,12 +90,12 @@ class AbaInventario(ttk.Frame):
             caixa.bind("<FocusOut>", self._ao_marcar)
         ttk.Label(
             containers,
-            text="Containers nao tem tag nesta edicao: a cor e' a identidade. "
+            text="Containers não tem tag nesta edição: a cor é a identidade. "
                  "O YAML diz apenas em qual mesa cada um esta.",
-            wraplength=210, foreground="#666666",
+            wraplength=theme.px(230), style="CartaoFraco.TLabel",
         ).grid(row=len(rules.CORES), column=0, columnspan=2, sticky="w", pady=(8, 0))
 
-        self.lbl_resumo = ttk.Label(lateral, text="", wraplength=210, justify="left")
+        self.lbl_resumo = ttk.Label(lateral, text="", wraplength=theme.px(250), justify="left")
         self.lbl_resumo.pack(fill="x", pady=(12, 0))
 
     # -------------------------------------------------------------- acoes
@@ -138,7 +139,7 @@ class AbaInventario(ttk.Frame):
             )
         if not self.meta.cubos:
             linhas.append(
-                "Sem inventario, o gerador assume 1..30 nas duas cores e avisa no guia do juiz."
+                "Sem inventário, o gerador assume 1..30 nas duas cores e avisa no guia do juiz."
             )
         self.lbl_resumo.configure(text="\n".join(linhas))
 

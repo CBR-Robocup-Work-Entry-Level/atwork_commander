@@ -41,7 +41,8 @@ class Visor(ttk.Frame):
         self.texto = tk.Text(
             self, height=altura, wrap="none", font=fontes.mono,
             background=FUNDO_CODIGO, foreground=theme.TEXTO,
-            borderwidth=1, relief="solid", highlightthickness=0,
+            borderwidth=0, relief="flat", highlightthickness=1,
+            highlightbackground=theme.BORDA, highlightcolor=theme.BORDA,
             padx=16, pady=14, spacing1=1, spacing3=2, cursor="arrow",
             selectbackground=theme.SELECAO, selectforeground=theme.TEXTO,
         )

@@ -28,9 +28,9 @@ class DialogoPreview(tk.Toplevel):
         self.regerar = regerar
         self.salvos: list[Path] = []
 
-        self.title(f"Pre-visualizacao — {task.prova}")
-        self.geometry("1120x800")
-        self.configure(background=theme.JANELA)
+        self.title(f"Pré-visualização — {task.prova}")
+        theme.dimensionar(self, 1120, 800, minimo=(760, 520))
+        self.configure(background=theme.CARTAO)
         self.transient(pai)
         self.var_destino = tk.StringVar(value=str(destino_padrao()))
 
@@ -50,8 +50,9 @@ class DialogoPreview(tk.Toplevel):
         topo.columnconfigure(0, weight=1)
         self.lbl_titulo = ttk.Label(topo, text="", style="Titulo.TLabel")
         self.lbl_titulo.grid(row=0, column=0, sticky="w")
-        self.lbl_desvios = ttk.Label(topo, text="", justify="left", wraplength=940)
+        self.lbl_desvios = ttk.Label(topo, text="", justify="left", wraplength=theme.px(940))
         self.lbl_desvios.grid(row=1, column=0, sticky="w", pady=(4, 0))
+        theme.quebra_automatica(self.lbl_desvios, topo, margem=30)
 
         self.abas = ttk.Notebook(self)
         self.abas.grid(row=1, column=0, sticky="nsew", padx=12)
@@ -127,7 +128,7 @@ class DialogoPreview(tk.Toplevel):
         existentes = [a.nome for a in self.arquivos if (destino / a.nome).exists()]
         if existentes and not messagebox.askyesno(
             "Sobrescrever",
-            "Ja existe(m) em " + str(destino) + ":\n\n" + "\n".join(existentes)
+            "Já existe(m) em " + str(destino) + ":\n\n" + "\n".join(existentes)
             + "\n\nSobrescrever?",
             parent=self,
         ):
@@ -135,7 +136,7 @@ class DialogoPreview(tk.Toplevel):
         try:
             self.salvos = gravar(self.arquivos, destino)
         except OSError as exc:
-            messagebox.showerror("Nao foi possivel gravar", str(exc), parent=self)
+            messagebox.showerror("Não foi possível gravar", str(exc), parent=self)
             return
         self.destroy()
 

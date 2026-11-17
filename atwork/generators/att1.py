@@ -1,18 +1,21 @@
 """ATT1 — Advanced Transportation Test I (rulebook 4.4.2).
 
-20 min, 6 areas ativas balanceadas entre o lado marcado e o lado livre: ao
-menos duas workstations, uma prateleira e a area de empilhamento, cobrindo as
-alturas de mesa que a arena oferece.
+20 min, 6 areas ativas balanceadas entre o lado marcado e o lado livre: a
+workstation que hospeda a zona de empilhamento, ao menos duas workstations
+comuns e uma prateleira, cobrindo as alturas de mesa que a arena oferece.
 
-Os 6 ATTCs comecam em workstations e todos sao transportados. Destinos: 1 no
-nivel superior da prateleira, 1 em cada container, 2 empilhados sobre a tag de
-referencia da area de empilhamento e 1 colocado solto sobre uma workstation.
-Os decoys permanecem onde foram postos.
+A zona de empilhamento e' um modificador de workstation escolhido pela
+organizacao (nunca sorteado). Nesta prova a mesa dela so recebe a pilha: nada
+comeca ali, e ela nao hospeda container nem decoy.
+
+Os 6 ATTCs comecam em workstations comuns e todos sao transportados. Destinos:
+1 no nivel superior da prateleira, 1 em cada container, 2 empilhados sobre a
+tag de referencia da zona de empilhamento e 1 colocado solto sobre uma
+workstation. Os decoys permanecem onde foram postos.
 
 Quem vai para container e' sempre um cubo da cor daquele container ("cubo azul
-no container azul"). O arquivo de equipe diz explicitamente qual cubo entra em
-qual container; a regra de cor e' uma garantia do gerador, nao uma deducao que
-o robo precise fazer.
+no container azul"). O arquivo de equipe informa a cor de cada cubo e diz
+explicitamente qual cubo entra em qual container.
 """
 
 from __future__ import annotations
@@ -29,10 +32,9 @@ MIN_POR_COR = {"BLUE": 1, "RED": 1}   # um cubo de cada cor para os containers
 
 REQUISITO = Requisito(
     n=rules.N_AREAS_ALVO[PROVA],
-    tipos=("WORKSTATION", "SHELF", "STACKING"),
-    min_ws=2,
+    tipos=("WORKSTATION", "SHELF"),
+    min_ws=3,       # a mesa da zona de empilhamento + 2 workstations comuns
     min_shelf=1,
-    min_stacking=1,
     balancear_lados=True,
     cobrir_alturas=True,
 )
@@ -40,14 +42,17 @@ REQUISITO = Requisito(
 
 def bloqueios(meta: Metaarena) -> list[str]:
     faltas = []
-    if len(meta.workstations()) < 2:
-        faltas.append("ATT1 precisa de pelo menos 2 workstations montadas.")
+    comuns = [a for a in meta.workstations() if not a.empilhamento]
+    if len(comuns) < 2:
+        faltas.append(
+            "ATT1 precisa de pelo menos 2 workstations alem da mesa da zona de empilhamento."
+        )
     if not meta.do_tipo("SHELF"):
         faltas.append("ATT1 entrega um ATTC no nivel superior de uma prateleira, e a arena nao tem.")
-    if not meta.do_tipo("STACKING"):
+    if meta.empilhamento() is None:
         faltas.append(
-            "ATT1 empilha 2 ATTCs sobre a tag de referencia da area de empilhamento (ST), "
-            "ausente da arena."
+            "ATT1 empilha 2 ATTCs sobre a tag de referencia da zona de empilhamento, e "
+            "nenhuma workstation esta marcada como zona de empilhamento."
         )
     for cor, minimo in MIN_POR_COR.items():
         if meta.containers.get(cor, 0) < 1:
@@ -63,16 +68,19 @@ def bloqueios(meta: Metaarena) -> list[str]:
 def gerar(meta: Metaarena, opcoes: Opcoes | None = None) -> Task:
     ctx = Contexto(PROVA, meta, opcoes)
 
-    selecao = escolher_areas(meta, ctx.rng, REQUISITO, PROVA)
+    zona = meta.empilhamento()
+    selecao = escolher_areas(
+        meta, ctx.rng, REQUISITO, PROVA, obrigatorias=[zona] if zona else None
+    )
     ctx.ativar(selecao.areas, *selecao.desvios)
+    empilhamento = ctx.usar_empilhamento()
 
-    workstations = [a for a in ctx.task.ativas if a.tipo == "WORKSTATION"]
+    workstations = ctx.mesas()
     prateleiras = [a for a in ctx.task.ativas if a.tipo == "SHELF"]
-    empilhamentos = [a for a in ctx.task.ativas if a.tipo == "STACKING"]
-    if not workstations or not prateleiras or not empilhamentos:
+    if not workstations or not prateleiras:
         raise GenerationError(
-            "ATT1 precisa de workstation, prateleira e area de empilhamento simultaneamente "
-            "ativas; a arena montada nao permitiu essa combinacao."
+            "ATT1 precisa de workstation comum, prateleira e zona de empilhamento "
+            "simultaneamente ativas; a arena montada nao permitiu essa combinacao."
         )
 
     cubos = ctx.sortear(rules.N_OBJETOS[PROVA], MIN_POR_COR)
@@ -86,7 +94,6 @@ def gerar(meta: Metaarena, opcoes: Opcoes | None = None) -> Task:
     na_prateleira, base, topo, na_mesa = restantes[:4]
 
     prateleira = prateleiras[ctx.rng.randrange(len(prateleiras))]
-    empilhamento = empilhamentos[ctx.rng.randrange(len(empilhamentos))]
 
     def sem_ambiguidade(*sobre_a_mesa):
         """Workstations onde estes cubos nao ficam ao lado do container da propria cor.
@@ -126,8 +133,9 @@ def gerar(meta: Metaarena, opcoes: Opcoes | None = None) -> Task:
 
     ctx.builder.instrucao(
         f"Entrega na prateleira {prateleira.id}, nivel {rules.NIVEL_ENTREGA_SHELF}.",
-        f"Pilha de 2 cubos em {empilhamento.id}, sobre a tag de referencia "
-        f"{empilhamento.tag_ref}: {base} embaixo, {topo} em cima.",
+        f"Zona de empilhamento em {empilhamento.id} (tag de referencia "
+        f"{empilhamento.tag_ref}): pilha de 2 cubos, {base} embaixo, {topo} em cima. "
+        f"Nesta prova a mesa so recebe a pilha.",
     )
     ctx.espalhar_decoys()
     return ctx.concluir()

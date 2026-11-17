@@ -8,7 +8,9 @@ O `TaskBuilder` e' quem impede estado invalido de nascer. Ele recusa na hora:
 - passar da capacidade da zona de manipulacao da area;
 - colocar o mesmo cubo duas vezes na mesma fase;
 - juntar na mesma area dois cubos de mesmo ID e cores diferentes;
-- empilhar fora da area de empilhamento ou acima do limite dela;
+- empilhar fora da zona de empilhamento ou acima do limite dela;
+- usar a mesa da zona de empilhamento para outra coisa que nao a pilha, nas
+  provas em que a zona esta em uso;
 - usar nivel de prateleira ou slot em area que nao os tem.
 """
 
@@ -88,6 +90,10 @@ class Task:
     # Areas cujo arranjo INICIAL nao e' revelado a equipe (AMT: a mesa de
     # precisao). O arquivo de equipe lista os objetos presentes, mas nao os slots.
     inicio_oculto: set[str] = field(default_factory=set)
+    # Workstation cuja zona de empilhamento esta EM USO nesta prova. Enquanto em
+    # uso a mesa so recebe a pilha: nada comeca nela, nao hospeda container nem
+    # decoy. None = prova sem empilhamento; a mesa e' uma workstation comum.
+    empilhamento: str | None = None
 
     @property
     def ideal(self) -> bool:
@@ -217,9 +223,27 @@ class TaskBuilder:
             area = self.task.area(area_id)
             if area.tipo != "WORKSTATION":
                 raise GenerationError(f"container {cor} exige workstation, nao {area.tipo}")
+            if area_id == self.task.empilhamento:
+                raise GenerationError(
+                    f"container {cor} em {area_id}: a mesa da zona de empilhamento so "
+                    f"recebe a pilha nesta prova"
+                )
             if area_id not in self.task.ids_ativas:
                 raise GenerationError(f"container {cor} em area inativa: {area_id}")
         self.task.containers = dict(por_cor)
+
+    def usar_empilhamento(self, area_id: str) -> None:
+        """Poe a zona de empilhamento da workstation em uso nesta prova."""
+        area = self.task.area(area_id)
+        if not area.empilhamento:
+            raise GenerationError(f"{area_id} nao hospeda a zona de empilhamento")
+        if area_id not in self.task.ids_ativas:
+            raise GenerationError(f"zona de empilhamento em area inativa: {area_id}")
+        if self.task.inicio.get(area_id) or self.task.fim.get(area_id):
+            raise GenerationError(f"{area_id}: ja ha objetos na mesa da zona de empilhamento")
+        if area_id in self.task.containers.values():
+            raise GenerationError(f"{area_id}: a mesa da zona de empilhamento hospeda container")
+        self.task.empilhamento = area_id
 
     # ------------------------------------------------------------- colocacao
     def _checar(self, fase: str, area: ServiceArea, item: Item) -> None:
@@ -236,6 +260,20 @@ class TaskBuilder:
                 raise GenerationError(
                     f"{fase}/{area.id}: cubos {existente.cubo} e {item.cubo} tem o mesmo "
                     f"ID em cores diferentes e nao podem dividir a mesma area"
+                )
+
+        if area.id == self.task.empilhamento:
+            if fase == "inicio":
+                raise GenerationError(
+                    f"{area.id}: a mesa da zona de empilhamento comeca vazia nesta prova"
+                )
+            if item.decoy or item.container is not None:
+                raise GenerationError(
+                    f"{area.id}: a mesa da zona de empilhamento so recebe a pilha nesta prova"
+                )
+            if item.sobre is None and any(i.sobre is None for i in itens):
+                raise GenerationError(
+                    f"{area.id}: so a base da pilha fica sobre a tag de referencia"
                 )
 
         # Itens dentro de container ou empilhados nao ocupam largura de mesa.
@@ -275,15 +313,16 @@ class TaskBuilder:
                 raise GenerationError("nenhuma prova inicia com objetos dentro de container")
 
         if item.sobre is not None:
-            if area.tipo != "STACKING":
+            if area.id != self.task.empilhamento:
                 raise GenerationError(
-                    f"{area.id}: pilha so na area de empilhamento, sobre a tag de referencia"
+                    f"{area.id}: pilha so na zona de empilhamento em uso, sobre a tag de "
+                    f"referencia"
                 )
             if not any(i.id == item.sobre for i in itens):
                 raise GenerationError(f"{area.id}: base {item.sobre} da pilha nao esta na area")
             if any(i.sobre == item.sobre for i in itens):
                 raise GenerationError(f"{area.id}: cubo {item.sobre} ja tem outro empilhado nele")
-            limite = area.max_pilha
+            limite = area.pilha_maxima
             altura = 1 + sum(1 for i in itens if i.sobre is not None)
             if altura + 1 > max(limite, 2):
                 raise GenerationError(f"{area.id}: pilha passaria de {limite} cubos")
@@ -320,8 +359,8 @@ class TaskBuilder:
         """Empilha os cubos sobre a tag de referencia: primeiro e a base, ultimo e o topo."""
         if len(cubos) < 2:
             raise GenerationError("uma pilha precisa de pelo menos 2 cubos")
-        if self.task.area(area_id).tipo != "STACKING":
-            raise GenerationError(f"{area_id}: pilha so na area de empilhamento (ST)")
+        if area_id != self.task.empilhamento:
+            raise GenerationError(f"{area_id}: pilha so na zona de empilhamento em uso")
         self.colocar(fase, area_id, cubos[0])
         for base, acima in zip(cubos, cubos[1:]):
             self.colocar(fase, area_id, acima, sobre=base.id)

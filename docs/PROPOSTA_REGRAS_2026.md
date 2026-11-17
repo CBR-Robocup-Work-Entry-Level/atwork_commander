@@ -6,6 +6,23 @@ as dúvidas que as equipes levantaram e listar os pontos do rulebook v1 que
 precisam de uma frase a mais. Nenhuma regra de identidade muda; o que muda é o
 arquivo ficar explícito.
 
+> **Atualização — Commander v2.2.0.** Três pontos deste documento foram
+> superados e valem como está aqui, não como está no texto abaixo:
+>
+> 1. **A cor dos ATTCs é informada no arquivo de equipe**
+>    (`objects: [{id: 4, color: BLUE}]`), conforme a reunião TC/OC de
+>    30/07/2026. Os containers continuam sem AprilTag, com cor e workstation
+>    informadas. Decoys continuam fora do arquivo de equipe.
+> 2. **A zona de empilhamento não é uma área de serviço própria (`ST`).** É um
+>    modificador de uma workstation existente (5, 10 ou 15 cm), escolhida pela
+>    organização — como já diz o rulebook 2.7.4. Em `stacking_areas` a chave é
+>    o ID dessa workstation. Nas provas sem pilha a mesa é uma workstation
+>    comum; nas provas com pilha ela só recebe a pilha. O item 4 da seção 5
+>    deixa de valer.
+> 3. **Mesmo ID em duas cores:** o TC permitiu na arena, nunca na mesma mesa. O
+>    Commander continua mais restrito (IDs únicos por task), porque as chaves
+>    de posição referenciam o objeto só pelo ID.
+
 ---
 
 ## 1. O que as equipes perguntaram

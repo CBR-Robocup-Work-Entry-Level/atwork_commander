@@ -9,7 +9,7 @@ tamanho e da densidade da competição.
 
 | Original (regular 2025) | Entry-Level 2026 | Por quê |
 |---|---|---|
-| RT01 (mesa giratória) | **ST** (área de empilhamento, mesa de 10 cm, tag de referência 200) | Não há mesa giratória no Entry-Level; o rulebook brasileiro cria a zona de empilhamento |
+| RT01 (mesa giratória) | **WS_15** (workstation de 10 cm que hospeda a **zona de empilhamento**, tag de referência 200) | Não há mesa giratória no Entry-Level; a zona de empilhamento é um modificador de workstation, e a organização pode movê-la para outra mesa de 5, 10 ou 15 cm |
 | PP01 | **PP** com 7 slots, tags 101..107 (esq. para dir.) | AMT usa 6 ATTCs + 1 slot vazio |
 | WS01..WS14 | **WS_1..WS_14**, mesmas alturas | Quantidade e alturas iguais às do mapa |
 | SH01, SH02 | **SH_1** (lado marcado), **SH_2** (lado livre) | ATT2 pede prateleira em cada lado |
@@ -32,7 +32,7 @@ para montar a arena de treino; a metaarena do Commander não guarda posição.
 | WS_6 | workstation | 5 cm | marcado | (2.8, 5.2) | lado de cima da mesa WS05/WS06 |
 | WS_5 | workstation | 5 cm | marcado | (2.8, 6.0) | lado de baixo |
 | SH_1 | prateleira | — | marcado | (2.1, 0.4) | junto ao START |
-| ST | empilhamento | 10 cm | livre | (4.8, 0.5) | no lugar da RT01; tag 200 no centro da zona |
+| WS_15 | workstation + zona de empilhamento | 10 cm | livre | (4.8, 0.5) | no lugar da RT01; tag 200 no centro da zona |
 | PP | precisão | — | livre | (6.1, 0.3) | 7 slots, tags 101..107 |
 | WS_14 | workstation | 10 cm | livre | (7.3, 0.3) | |
 | WS_8 | workstation | 0 cm | livre | (5.2, 4.0) | lado esquerdo da mesa WS08/WS09 |
@@ -47,15 +47,21 @@ START: (0.9, 0.7). FINISH (GOAL): (9.0, 0.7). Paredes internas: 16 de 100 cm e
 18 de 40 cm, como no mapa original; obstáculos físicos entram por cima disso
 conforme a prova.
 
-Resumo: 14 workstations (0 cm x3, 5 cm x3, 10 cm x4, 15 cm x4), 2 prateleiras,
-1 mesa de precisão, 1 área de empilhamento. Lado marcado: 7 WS + SH_1. Lado
-livre: 7 WS + SH_2 + PP + ST.
+Resumo: 15 workstations (0 cm x3, 5 cm x3, 10 cm x5, 15 cm x4), 2 prateleiras,
+1 mesa de precisão. A zona de empilhamento fica na WS_15. Lado marcado: 7 WS +
+SH_1. Lado livre: 8 WS + SH_2 + PP.
+
+As distâncias `dist_start_m` e `dist_finish_m` do exemplo são a soma dos
+deslocamentos em x e y (distância de Manhattan) entre a posição aproximada da
+área e o START / FINISH, arredondada a 0,1 m. São aproximações para treino:
+na arena real, meça o percurso e cadastre na aba Arena.
 
 ## Inventário cadastrado no exemplo
 
 - ATTCs azuis: tags 1..15. ATTCs vermelhos: tags 1..6 e 16..30.
-- Tags 1..6 existem nas duas cores de propósito, para exercitar a regra: o
-  gerador nunca coloca as duas cores do mesmo ID na mesma task.
+- Tags 1..6 existem nas duas cores de propósito, para exercitar a regra: o TC
+  proíbe as duas cores do mesmo ID na mesma mesa, e o gerador nunca as coloca
+  na mesma task.
 - Containers: 1 azul, 1 vermelho.
 
 ## Tags fixas da arena
@@ -64,7 +70,7 @@ livre: 7 WS + SH_2 + PP + ST.
 |---|---|---|
 | ATTCs | 1..30 | tag36h11 |
 | Slots da PP | 101, 102, 103, 104, 105, 106, 107 (esq. para dir.) | tag36h11 |
-| Centro da ST | 200 | tag36h11 |
+| Centro da zona de empilhamento (WS_15) | 200 | tag36h11 |
 
 As tags fixas ficam fora da faixa dos ATTCs para que nenhum detector confunda
 referência com objeto. O arquivo de equipe sempre lista as tags em uso

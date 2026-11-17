@@ -16,7 +16,11 @@ from atwork.generators.base import Contexto, Opcoes, exigir_capacidade
 PROVA = "BMT"
 N_SOLICITADOS = 3
 
-REQUISITO = Requisito(n=rules.N_AREAS_ALVO[PROVA], tipos=("WORKSTATION",), min_ws=2)
+# Prova de entrada: quando a arena tem as distancias cadastradas, usa as mesas
+# de menor percurso START -> mesa -> FINISH.
+REQUISITO = Requisito(
+    n=rules.N_AREAS_ALVO[PROVA], tipos=("WORKSTATION",), min_ws=2, preferir_perto=True
+)
 
 
 def bloqueios(meta: Metaarena) -> list[str]:

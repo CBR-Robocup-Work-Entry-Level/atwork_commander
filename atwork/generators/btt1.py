@@ -16,7 +16,8 @@ PROVA = "BTT1"
 ALTURAS = rules.ALTURAS_POR_PROVA[PROVA]
 
 REQUISITO = Requisito(
-    n=rules.N_AREAS_ALVO[PROVA], tipos=("WORKSTATION",), alturas=ALTURAS, min_ws=3
+    n=rules.N_AREAS_ALVO[PROVA], tipos=("WORKSTATION",), alturas=ALTURAS, min_ws=3,
+    preferir_perto=True,   # prova basica: mesas de menor percurso, quando ha medida
 )
 
 

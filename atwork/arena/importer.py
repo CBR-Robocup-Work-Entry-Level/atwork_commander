@@ -10,9 +10,9 @@ Formato de entrada (caramelo_mapping/maps/<mapa>/service_areas.yaml):
         type: workstation
         table: {width: 0.8, depth: 0.5, height: 0.1}
 
-Lado marcado, inventario de cubos e tags de referencia (slots da PP, centro
-da ST) nao existem no mapa do robo: continuam sendo preenchidos na GUI, e as
-tags assumem o padrao da competicao enquanto isso.
+Lado marcado, inventario de cubos, tags de referencia dos slots da PP e a
+escolha da workstation que hospeda a zona de empilhamento nao existem no mapa
+do robo: continuam sendo preenchidos na GUI.
 """
 
 from __future__ import annotations
@@ -30,13 +30,13 @@ TIPOS_ROS = {
     "workstation": "WORKSTATION",
     "shelf": "SHELF",
     "precision_placement": "PRECISION",
-    "stacking": "STACKING",
+    "stacking": None,       # zona de empilhamento: modificador de WS, marcado na GUI
     "rotating_table": None,
     "start": None,
     "finish": None,
 }
 
-PREFIXOS_ROS = {"WS": "WORKSTATION", "SH": "SHELF", "PP": "PRECISION", "ST": "STACKING"}
+PREFIXOS_ROS = {"WS": "WORKSTATION", "SH": "SHELF", "PP": "PRECISION"}
 
 
 def _tipo_de(nome: str, dados: dict) -> str | None:
@@ -59,7 +59,7 @@ def _id_canonico(nome: str, tipo: str) -> str:
     """WS1 -> WS_1; PP1 -> PP."""
     prefixo = rules.PREFIXO_ID[tipo]
     digitos = "".join(ch for ch in nome.strip().upper() if ch.isdigit())
-    if tipo in ("PRECISION", "STACKING") and digitos in ("", "1"):
+    if tipo == "PRECISION" and digitos in ("", "1"):
         return prefixo
     return f"{prefixo}_{digitos or 1}"
 
@@ -102,10 +102,9 @@ def importar_service_areas(caminho: Path | str) -> tuple[Metaarena, list[str]]:
             ServiceArea(
                 id=_id_canonico(str(nome), tipo),
                 tipo=tipo,
-                altura_cm=_altura_cm(dados) if tipo in ("WORKSTATION", "STACKING") else None,
+                altura_cm=_altura_cm(dados) if tipo == "WORKSTATION" else None,
                 niveis=2,
                 cavidades=rules.AMT_SLOTS if tipo == "PRECISION" else 0,
-                max_pilha=rules.MAX_PILHA_PADRAO if tipo == "STACKING" else 0,
             )
         )
 
@@ -113,7 +112,7 @@ def importar_service_areas(caminho: Path | str) -> tuple[Metaarena, list[str]]:
         raise MetaarenaError(f"{origem}: nenhuma area de servico reconhecida.")
 
     avisos.append(
-        "Lado marcado e inventario de cubos nao existem no mapa do robo — "
-        "preencha na GUI antes de gerar ATT1/ATT2."
+        "Lado marcado, inventario de cubos e a workstation da zona de empilhamento "
+        "nao existem no mapa do robo — preencha na GUI antes de gerar ATT1/ATT2/Final."
     )
     return Metaarena(areas=areas, nome=origem.parent.name), avisos

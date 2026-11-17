@@ -8,24 +8,30 @@ completo, campo a campo, esta em config/schema_task_equipe.yaml.
 
 Principios que o arquivo segue:
 
-- **Um objeto e' identificado so pelo ID da AprilTag.** Dentro de uma task os
-  IDs nunca se repetem (nem entre objetos e decoys), entao o ID basta para
-  achar o cubo — mesmo que a arena tenha o mesmo ID nas duas cores no estoque.
-  A cor nao aparece em `objects`: identificar cor e' tarefa do robo.
-- **Containers sao identificados pela cor** e pela workstation em que estao.
-  Um cubo so entra no container da propria cor; o arquivo diz explicitamente
-  qual cubo entra em qual container, sem deducao.
+- **Um objeto e' o par (ID da AprilTag, cor)**, e os dois vao em `objects`
+  (decisao do TC/OC de 30/07/2026: a cor dos ATTCs e' informada). Dentro de uma
+  task os IDs nunca se repetem (nem entre objetos e decoys), entao nas chaves
+  de posicao o ID sozinho basta para achar o cubo — mesmo que a arena tenha o
+  mesmo ID nas duas cores no estoque.
+- **Containers nao tem AprilTag**: sao identificados pela cor e pela
+  workstation em que estao, ambas informadas. Achar o container sobre a mesa
+  (pela cor) e' tarefa do robo. Um cubo so entra no container da propria cor;
+  o arquivo diz explicitamente qual cubo entra em qual container.
 - **Toda posicao e' explicita.** `obj_ids` diz quem esta na area (conjunto, em
   ordem crescente, sem significado de posicao); as chaves `table`,
   `containers`, `levels`, `slots` e `stack` dizem exatamente onde, e a uniao
   delas e' sempre igual a `obj_ids`.
 - **Nada precisa ser hardcoded no robo:** as tags de referencia dos slots da
-  mesa de precisao e da area de empilhamento vao no proprio arquivo.
+  mesa de precisao e da zona de empilhamento vao no proprio arquivo.
+- **Zona de empilhamento** nao e' uma area propria: e' uma workstation com uma
+  tag de referencia. So aparece (`stacking_areas`, chave `stack`) nas provas
+  que empilham; nessas, a mesa so recebe a pilha. Nas demais provas a mesma
+  mesa e' uma workstation comum.
 - **AMT:** o arranjo inicial da mesa de precisao e' escondido (`slots: null`);
   a equipe sabe quais objetos estao la e qual e' o estado final.
 
-Decoys, obstaculos, cores de ATTC, areas inativas e seed nunca entram aqui: sao
-materia do guia do juiz.
+Decoys, obstaculos, areas inativas e seed nunca entram aqui: sao materia do
+guia do juiz.
 """
 
 from __future__ import annotations
@@ -50,11 +56,14 @@ CABECALHO = """\
 #   levels     = prateleira: BOTTOM e TOP, cada nivel da esquerda para a direita.
 #   slots      = mesa de precisao: tag de referencia do slot -> ID do objeto
 #                (null = slot vazio). As tags estao em precision_tables.
-#   stack      = area de empilhamento: pilha sobre a tag de referencia, da BASE
-#                ao TOPO. A tag esta em stacking_areas.
+#   stack      = zona de empilhamento (uma WS, listada em stacking_areas):
+#                pilha sobre a tag de referencia, da BASE ao TOPO. Nesta prova
+#                essa mesa so recebe a pilha.
 #   A uniao de table/containers/levels/slots/stack e' SEMPRE igual a obj_ids.
-# Objetos sao identificados so pelo ID da AprilTag; IDs nao se repetem nesta
-# task. A cor dos ATTCs nao e' informada: identificar cor e' tarefa do robo.
+# Cada objeto e' um ATTC: `id` = ID da AprilTag, `color` = cor do cubo (BLUE |
+# RED). Os IDs nao se repetem nesta task, entao nos estados o ID basta.
+# Containers nao tem AprilTag: o arquivo diz a cor e a workstation de cada um;
+# localizar o container sobre a mesa, pela cor, e' tarefa do robo.
 {extra}"""
 
 EXTRA_AMT = """\
@@ -85,7 +94,13 @@ def _bloco(task: Task, area: ServiceArea, fase: str) -> dict:
     itens = [i for i in task.itens_de(area.id, fase) if not i.decoy]
     bloco: dict[str, object] = {"obj_ids": sorted(i.id for i in itens)}
 
-    if area.tipo == "WORKSTATION":
+    if area.id == task.empilhamento:
+        # Zona de empilhamento em uso: a mesa so tem a pilha.
+        cadeias = sorted(_pilhas(itens), key=len, reverse=True)
+        bloco["table"] = []
+        bloco["stack"] = [i.id for i in cadeias[0]] if cadeias else []
+
+    elif area.tipo == "WORKSTATION":
         bloco["table"] = [i.id for i in itens if i.container is None and i.sobre is None]
         hospedados = task.containers_em(area.id)
         if hospedados:
@@ -107,13 +122,6 @@ def _bloco(task: Task, area: ServiceArea, fase: str) -> dict:
                 area.tag_do_slot(k): por_slot.get(k) for k in range(1, area.cavidades + 1)
             }
 
-    elif area.tipo == "STACKING":
-        cadeias = sorted(_pilhas(itens), key=len, reverse=True)
-        bloco["stack"] = [i.id for i in cadeias[0]] if cadeias else []
-        soltos = [i.id for cadeia in cadeias[1:] for i in cadeia]
-        if soltos:
-            bloco["table"] = soltos
-
     return bloco
 
 
@@ -129,7 +137,7 @@ def para_dict(task: Task) -> dict:
         "name": task.nome,
         "duration_min": task.duracao_min,
         "active_service_areas": task.ids_ativas,
-        "objects": [{"id": c.id} for c in sorted(task.cubos)],
+        "objects": [{"id": c.id, "color": c.cor} for c in sorted(task.cubos)],
     }
     if task.containers:
         doc["containers"] = [
@@ -140,9 +148,9 @@ def para_dict(task: Task) -> dict:
     precisao = [a for a in task.ativas if a.tipo == "PRECISION"]
     if precisao:
         doc["precision_tables"] = {a.id: {"slot_tags": a.tags_dos_slots()} for a in precisao}
-    empilhamento = [a for a in task.ativas if a.tipo == "STACKING"]
-    if empilhamento:
-        doc["stacking_areas"] = {a.id: {"reference_tag": a.tag_ref} for a in empilhamento}
+    if task.empilhamento:
+        zona = task.area(task.empilhamento)
+        doc["stacking_areas"] = {zona.id: {"reference_tag": zona.tag_ref}}
 
     doc["start_state"] = _estado(task, "inicio")
     doc["finish_state"] = _estado(task, "fim")
@@ -177,6 +185,23 @@ def conferir(doc: dict) -> list[str]:
     ids_objetos = [o.get("id") for o in doc.get("objects", [])]
     if len(set(ids_objetos)) != len(ids_objetos):
         erros.append("objects: IDs repetidos")
+    for objeto in doc.get("objects", []):
+        if objeto.get("color") not in rules.CORES:
+            erros.append(f"objects: objeto {objeto.get('id')} sem cor valida")
+    ativas = doc.get("active_service_areas", [])
+    for cont in doc.get("containers") or []:
+        if cont.get("color") not in rules.CORES or cont.get("at") not in ativas:
+            erros.append(f"containers: entrada invalida {cont}")
+    zonas = doc.get("stacking_areas") or {}
+    for area_id in zonas:
+        if area_id not in ativas:
+            erros.append(f"stacking_areas: {area_id} nao esta em active_service_areas")
+    for fase in ("start_state", "finish_state"):
+        for area_id, bloco in (doc.get(fase) or {}).items():
+            if ("stack" in bloco) != (area_id in zonas):
+                erros.append(f"{fase}/{area_id}: chave stack so na zona de empilhamento em uso")
+            if area_id in zonas and (bloco.get("table") or bloco.get("containers")):
+                erros.append(f"{fase}/{area_id}: a mesa da zona de empilhamento so recebe a pilha")
 
     for fase in ("start_state", "finish_state"):
         estado = doc.get(fase) or {}

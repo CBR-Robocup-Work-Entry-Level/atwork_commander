@@ -1,16 +1,20 @@
 """FINAL — Final Test (rulebook 4.5).
 
 30 min, todas as areas de servico montadas ficam ativas. Os 10 ATTCs saem em
-cinco duplas de destino: pilha sobre a tag de referencia da area de
+cinco duplas de destino: pilha sobre a tag de referencia da zona de
 empilhamento, nivel superior da prateleira, slots da mesa de precisao,
 container azul e container vermelho.
+
+A zona de empilhamento e' um modificador de workstation escolhido pela
+organizacao. Nesta prova a mesa dela so recebe a pilha: nada comeca ali, e ela
+nao hospeda container nem decoy.
 
 Dois ATTCs comecam no nivel inferior da prateleira — subir da prateleira de
 baixo para a de cima na mesma estante conta como transporte. Dois obstaculos
 fisicos, com nivel de bloqueio a criterio do TC.
 
-Cada container recebe dois cubos da propria cor: o destino sai da leitura de cor
-feita pelo robo, e nao de uma instrucao no arquivo de equipe.
+Cada container recebe dois cubos da propria cor. O arquivo de equipe informa a
+cor de cada cubo e diz explicitamente qual cubo entra em qual container.
 """
 
 from __future__ import annotations
@@ -30,14 +34,20 @@ MIN_POR_COR = {"BLUE": 2, "RED": 2}   # duas duplas de container, uma por cor
 
 def bloqueios(meta: Metaarena) -> list[str]:
     faltas = []
-    if len(meta.workstations()) < 2:
-        faltas.append("A Final precisa de pelo menos 2 workstations montadas.")
+    comuns = [a for a in meta.workstations() if not a.empilhamento]
+    if len(comuns) < 2:
+        faltas.append(
+            "A Final precisa de pelo menos 2 workstations alem da mesa da zona de empilhamento."
+        )
     if not meta.do_tipo("SHELF"):
         faltas.append("A Final usa prateleira nos dois sentidos (coleta embaixo, entrega em cima).")
     if not meta.do_tipo("PRECISION"):
         faltas.append("A Final termina 2 ATTCs na mesa de precisao (PP), ausente da arena.")
-    if not meta.do_tipo("STACKING"):
-        faltas.append("A Final empilha 2 ATTCs na area de empilhamento (ST), ausente da arena.")
+    if meta.empilhamento() is None:
+        faltas.append(
+            "A Final empilha 2 ATTCs na zona de empilhamento, e nenhuma workstation esta "
+            "marcada como zona de empilhamento."
+        )
     for cor, minimo in MIN_POR_COR.items():
         if meta.containers.get(cor, 0) < 1:
             faltas.append(
@@ -59,10 +69,10 @@ def gerar(meta: Metaarena, opcoes: Opcoes | None = None) -> Task:
         raise GenerationError("nenhuma area de servico cadastrada na arena.")
     ctx.ativar(ativas)
 
-    empilhamento = uma_area(meta, ctx.rng, "STACKING", PROVA)
+    empilhamento = ctx.usar_empilhamento()
     pp = uma_area(meta, ctx.rng, "PRECISION", PROVA)
     prateleiras = meta.do_tipo("SHELF")
-    workstations = meta.workstations()
+    workstations = ctx.mesas()
     if not prateleiras or not workstations:
         raise GenerationError("a Final precisa de prateleira e workstation na arena.")
 
@@ -82,9 +92,9 @@ def gerar(meta: Metaarena, opcoes: Opcoes | None = None) -> Task:
         raise GenerationError(
             f"{pp.id} tem {pp.cavidades} cavidade(s) e a Final precisa de {len(na_precisao)}."
         )
-    if empilhamento.max_pilha < len(pilha):
+    if empilhamento.pilha_maxima < len(pilha):
         raise GenerationError(
-            f"{empilhamento.id} suporta pilha de {empilhamento.max_pilha}; "
+            f"{empilhamento.id} suporta pilha de {empilhamento.pilha_maxima}; "
             f"a Final empilha {len(pilha)}."
         )
 
@@ -121,8 +131,9 @@ def gerar(meta: Metaarena, opcoes: Opcoes | None = None) -> Task:
 
     ctx.task.obstaculos = obstacles.gerar(PROVA, ctx.rng, ctx.task.ativas)
     ctx.builder.instrucao(
-        f"Pilha em {empilhamento.id}, sobre a tag de referencia {empilhamento.tag_ref}: "
-        f"{pilha[0]} embaixo, {pilha[1]} em cima.",
+        f"Zona de empilhamento em {empilhamento.id} (tag de referencia "
+        f"{empilhamento.tag_ref}): {pilha[0]} embaixo, {pilha[1]} em cima. "
+        f"Nesta prova a mesa so recebe a pilha.",
         "Os 2 ATTCs do nivel inferior da prateleira contam como transporte ao subirem "
         "para o nivel superior.",
     )

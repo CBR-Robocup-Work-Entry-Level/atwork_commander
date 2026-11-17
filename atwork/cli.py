@@ -6,6 +6,7 @@ competicao e para diagnosticar a arena sem abrir janela.
     atwork                                  abre a GUI
     atwork checar                           situacao da arena, prova por prova
     atwork gerar ATT2 --seed 42 --decoys 3  gera e salva sem preview
+    atwork gerar ATT1 --empilhamento WS_3   idem, com a zona de empilhamento em WS_3
 """
 
 from __future__ import annotations
@@ -57,6 +58,14 @@ def cmd_gerar(args) -> int:
         print(f"prova desconhecida: {prova} (validas: {', '.join(rules.PROVAS)})", file=sys.stderr)
         return 2
 
+    if args.empilhamento:
+        # Parametro do operador: vale so para esta geracao, nao regrava a metaarena.
+        try:
+            meta.definir_empilhamento(args.empilhamento.upper())
+        except MetaarenaError as exc:
+            print(f"--empilhamento: {exc}", file=sys.stderr)
+            return 2
+
     impedimentos = generators.bloqueios(meta, prova)
     if impedimentos:
         print(f"[{prova}] arena incompativel:", file=sys.stderr)
@@ -103,6 +112,11 @@ def construir_parser() -> argparse.ArgumentParser:
     gerar.add_argument("--seed", type=int, default=None, help="semente (vazio = sorteia)")
     gerar.add_argument("--decoys", type=int, default=None, help="quantidade de decoys")
     gerar.add_argument("--saida", default=None, help="pasta destino (padrao: Downloads)")
+    gerar.add_argument(
+        "--empilhamento", default=None, metavar="WS_n",
+        help="workstation que hospeda a zona de empilhamento nesta geracao "
+             "(padrao: a marcada na metaarena)",
+    )
     return parser
 
 

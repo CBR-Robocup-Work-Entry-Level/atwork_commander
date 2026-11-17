@@ -80,7 +80,15 @@ OBSTACULOS = {
 }
 
 # ------------------------------------------------------------------- areas
-TIPOS_AREA = ("WORKSTATION", "SHELF", "PRECISION", "STACKING")
+TIPOS_AREA = ("WORKSTATION", "SHELF", "PRECISION")
+
+# A zona de empilhamento (rulebook 2.7.4) NAO e' um tipo de area: e' um
+# modificador de uma workstation comum. A mesa que a hospeda e' escolhida pela
+# organizacao (parametro da arena, nunca sorteio). Nas provas sem empilhamento
+# essa mesa funciona como workstation normal; nas provas com empilhamento
+# (ATT1 e Final) ela serve SO para receber a pilha.
+ALTURAS_EMPILHAMENTO = (5, 10, 15)
+PROVAS_COM_EMPILHAMENTO = ("ATT1", "FINAL")
 
 # ------------------------------------------------- zona de manipulacao
 # Faixa util da area onde os ATTCs ficam (rulebook 2.6). Medidas em cm, com a
@@ -94,7 +102,7 @@ ZONA_MARGEM_CM = 7.0          # folga entre a borda da area e o primeiro objeto
 TOLERANCIA_POSICAO_CM = 2.0   # desvio aceitavel ao posicionar
 
 # Teto de ATTCs simultaneos na zona de manipulacao de uma area. Vale para
-# workstation, prateleira e area de empilhamento; a mesa de precisao usa o
+# workstation e prateleira; a mesa de precisao usa o
 # proprio numero de slots. Nao e' cadastrado por area: na competicao as
 # mesas sao padronizadas, e digitar isso uma a uma so dava trabalho.
 MAX_OBJETOS_POR_AREA = 5
@@ -103,14 +111,12 @@ PREFIXO_ID = {
     "WORKSTATION": "WS",
     "SHELF": "SH",
     "PRECISION": "PP",
-    "STACKING": "ST",
 }
 
 REGEX_ID = {
     "WORKSTATION": r"^WS_\d+$",
     "SHELF": r"^SH_\d+$",
     "PRECISION": r"^PP(_\d+)?$",
-    "STACKING": r"^ST(_\d+)?$",
 }
 
 # Alturas de mesa validas em cm (rulebook 2.7.1 e 4.5).
@@ -139,21 +145,28 @@ POOL_IDS = tuple(range(ID_MIN, ID_MAX + 1))
 # ------------------------------------------------------ tags de referencia
 # Alem dos cubos, a arena tem AprilTags FIXAS que servem de referencia de
 # posicao (rulebook 2.7.3, 2.7.4 e 2.8): uma tag acima de cada slot da mesa de
-# precisao e uma tag no centro da area de empilhamento. Elas usam IDs fora da
+# precisao e uma tag no centro da zona de empilhamento. Elas usam IDs fora da
 # faixa dos ATTCs (1..30), para que o detector do robo nunca confunda uma
 # referencia com um objeto. Os valores abaixo sao o padrao da competicao; a
 # metaarena pode sobrescrever por area, e o arquivo de equipe sempre lista as
 # tags em uso para que o robo nao precise de nada hardcoded.
 TAG_REFERENCIA_MIN = 100
 TAG_SLOT_PP_BASE = 101          # slots da PP: 101, 102, ... da esquerda para a direita
-TAG_REFERENCIA_ST = 200         # tag no centro da area de empilhamento
+TAG_REFERENCIA_ST = 200         # tag no centro da zona de empilhamento
 
 # AMT: 6 ATTCs (tags 1..6) sobre a mesa de precisao, com 1 slot vazio.
 AMT_IDS = (1, 2, 3, 4, 5, 6)
 AMT_SLOTS = 7
 
-# Pilha: altura padrao maxima da area de empilhamento.
+# Pilha: altura padrao maxima da zona de empilhamento.
 MAX_PILHA_PADRAO = 3
 
 # Limite de execucao (nao de geracao): o robo carrega no maximo 3 objetos.
 MAX_CARGA_ROBO = 3
+
+# --------------------------------------------------------------- cronometro
+# Fase de preparacao: limite de 3 minutos (rulebook 4.1). A duracao de cada
+# prova esta em DURACAO_MIN. Cada equipe tem direito a UM reinicio por rodada
+# (rulebook 5.6); o tempo restante e' guardado e retomado depois do reinicio.
+PREPARO_S = 180
+MAX_REINICIOS = 1

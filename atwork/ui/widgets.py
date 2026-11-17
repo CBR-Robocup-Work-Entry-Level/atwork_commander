@@ -16,14 +16,15 @@ CORES_ESTADO = {
 
 
 def rotulo(pai: tk.Misc, texto: str, linha: int, coluna: int = 0, **kw) -> ttk.Label:
+    kw.setdefault("style", "Cartao.TLabel")   # os formularios vivem dentro de cartoes
     widget = ttk.Label(pai, text=texto, **kw)
-    widget.grid(row=linha, column=coluna, sticky="w", padx=(0, 6), pady=2)
+    widget.grid(row=linha, column=coluna, sticky="w", padx=(0, theme.px(8)), pady=theme.px(3))
     return widget
 
 
 def campo(pai: tk.Misc, variavel: tk.Variable, linha: int, largura: int = 18) -> ttk.Entry:
     entrada = ttk.Entry(pai, textvariable=variavel, width=largura)
-    entrada.grid(row=linha, column=1, sticky="we", pady=2)
+    entrada.grid(row=linha, column=1, sticky="we", pady=theme.px(3))
     return entrada
 
 
@@ -33,13 +34,13 @@ def combo(
     caixa = ttk.Combobox(
         pai, textvariable=variavel, values=valores, state="readonly", width=largura
     )
-    caixa.grid(row=linha, column=1, sticky="we", pady=2)
+    caixa.grid(row=linha, column=1, sticky="we", pady=theme.px(3))
     return caixa
 
 
 def botao(pai: tk.Misc, texto: str, comando, **grid) -> ttk.Button:
     widget = ttk.Button(pai, text=texto, command=comando)
-    widget.grid(sticky="we", pady=2, **grid)
+    widget.grid(sticky="we", pady=theme.px(3), **grid)
     return widget
 
 
@@ -51,8 +52,10 @@ class Console(ttk.Frame):
         self.texto = tk.Text(
             self, height=altura, wrap="word", state="disabled",
             font=theme.tipografia().pequena, background=theme.CARTAO,
-            foreground=theme.TEXTO, borderwidth=1, relief="solid",
-            highlightthickness=0, padx=10, pady=8, spacing3=2, cursor="arrow",
+            foreground=theme.TEXTO, borderwidth=0, relief="flat",
+            highlightthickness=1, highlightbackground=theme.BORDA,
+            highlightcolor=theme.BORDA, padx=theme.px(10), pady=theme.px(8), spacing3=theme.px(2),
+            cursor="arrow",
         )
         barra = ttk.Scrollbar(self, orient="vertical", command=self.texto.yview)
         self.texto.configure(yscrollcommand=barra.set)

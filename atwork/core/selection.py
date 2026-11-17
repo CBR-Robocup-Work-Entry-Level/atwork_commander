@@ -27,6 +27,12 @@ PESO_TIPO = 100.0
 PESO_LADO = 40.0
 PESO_SHELF_LADO = 30.0
 PESO_ALTURA = 10.0
+# Distancia: so desempata, e so nas provas que pedem `preferir_perto`. Entre as
+# selecoes empatadas nos outros criterios, o sorteio e' ponderado pelo percurso
+# medio (START -> area -> FINISH): cada ESCALA_DISTANCIA_M a mais divide a
+# chance por e (~2,7). As mesas proximas saem mais, sem a prova cair sempre nas
+# mesmas.
+ESCALA_DISTANCIA_M = 2.0
 
 # Acima deste numero de combinacoes, sorteia em vez de enumerar.
 LIMITE_ENUMERACAO = 40_000
@@ -42,10 +48,10 @@ class Requisito:
     alturas: tuple[int, ...] | None = None
     min_ws: int = 0
     min_shelf: int = 0
-    min_stacking: int = 0
     balancear_lados: bool = False
     shelf_por_lado: bool = False
     cobrir_alturas: bool = False
+    preferir_perto: bool = False
 
 
 @dataclass
@@ -59,12 +65,10 @@ def _penalidade(
 ) -> float:
     ws = [a for a in sel if a.tipo == "WORKSTATION"]
     shelves = [a for a in sel if a.tipo == "SHELF"]
-    stacking = [a for a in sel if a.tipo == "STACKING"]
 
     p = PESO_TIPO * (
         max(0, req.min_ws - len(ws))
         + max(0, req.min_shelf - len(shelves))
-        + max(0, req.min_stacking - len(stacking))
     )
 
     if req.balancear_lados:
@@ -81,6 +85,13 @@ def _penalidade(
         p += PESO_ALTURA * len(alturas_arena - cobertas)
 
     return p
+
+
+def _percurso_medio(sel: tuple[ServiceArea, ...], neutro: float) -> float:
+    """Percurso medio das areas, em metros; area sem medida vale a media da arena."""
+    if not sel:
+        return 0.0
+    return sum(a.percurso_m if a.percurso_m is not None else neutro for a in sel) / len(sel)
 
 
 def _combinacoes(pool: list[ServiceArea], n: int, rng: random.Random):
@@ -114,12 +125,6 @@ def _desvios(sel: tuple[ServiceArea, ...], req: Requisito, alturas_arena: set[in
             f"o rulebook pede {req.min_shelf} prateleira(s) ativa(s); a arena so permitiu "
             f"{len(shelves)}."
         )
-    stacking = [a for a in sel if a.tipo == "STACKING"]
-    if len(stacking) < req.min_stacking:
-        fora.append(
-            f"a prova pede {req.min_stacking} area(s) de empilhamento ativa(s); a arena so "
-            f"permitiu {len(stacking)}."
-        )
     if req.balancear_lados:
         marcadas = sum(a.lado_marcado for a in sel)
         alvo = len(sel) // 2
@@ -145,15 +150,25 @@ def _desvios(sel: tuple[ServiceArea, ...], req: Requisito, alturas_arena: set[in
 
 
 def escolher_areas(
-    meta: Metaarena, rng: random.Random, req: Requisito, contexto: str = ""
+    meta: Metaarena,
+    rng: random.Random,
+    req: Requisito,
+    contexto: str = "",
+    obrigatorias: list[ServiceArea] | None = None,
 ) -> Selecao:
-    """Escolhe as areas ativas que mais se aproximam do previsto pelo rulebook."""
-    pool = [a for a in meta.areas if a.tipo in req.tipos]
+    """Escolhe as areas ativas que mais se aproximam do previsto pelo rulebook.
+
+    `obrigatorias` entram sempre na selecao (ex.: a workstation da zona de
+    empilhamento no ATT1) e contam para `req.n`, lados e alturas.
+    """
+    fixas = list(obrigatorias or [])
+    ids_fixas = {a.id for a in fixas}
+    pool = [a for a in meta.areas if a.tipo in req.tipos and a.id not in ids_fixas]
     if req.alturas is not None:
         pool = [a for a in pool if a.tipo != "WORKSTATION" or a.altura_cm in req.alturas]
 
     rotulo = f"[{contexto}] " if contexto else ""
-    if not pool:
+    if not pool and not fixas:
         detalhe = "/".join(req.tipos)
         if req.alturas:
             detalhe += f" de {', '.join(f'{h} cm' for h in req.alturas)}"
@@ -163,19 +178,32 @@ def escolher_areas(
         )
 
     desvios: list[str] = []
-    n = min(req.n, len(pool))
-    if n < req.n:
+    livres = max(0, req.n - len(fixas))
+    n = min(livres, len(pool))
+    if n < livres:
+        total = n + len(fixas)
         desvios.append(
-            f"a prova preve {req.n} areas ativas, mas a arena so oferece {n} compativel(is); "
-            f"a task foi gerada com {n}."
+            f"a prova preve {req.n} areas ativas, mas a arena so oferece {total} "
+            f"compativel(is); a task foi gerada com {total}."
         )
 
     alturas_arena = meta.alturas_disponiveis() if req.cobrir_alturas else set()
-    candidatas = _combinacoes(pool, n, rng)
+    candidatas = [tuple(fixas) + tuple(sel) for sel in _combinacoes(pool, n, rng)]
     notas = [(_penalidade(sel, req, alturas_arena), sel) for sel in candidatas]
     melhor = min(nota for nota, _ in notas)
     empatadas = [sel for nota, sel in notas if abs(nota - melhor) < 1e-9]
-    escolhida = empatadas[rng.randrange(len(empatadas))]
+
+    pesos: list[float] | None = None
+    medidos = [a.percurso_m for a in meta.areas if a.percurso_m is not None]
+    if req.preferir_perto and medidos:
+        neutro = sum(medidos) / len(medidos)
+        percursos = [_percurso_medio(sel, neutro) for sel in empatadas]
+        menor = min(percursos)
+        pesos = [math.exp(-(p - menor) / ESCALA_DISTANCIA_M) for p in percursos]
+    if pesos is None:
+        escolhida = empatadas[rng.randrange(len(empatadas))]
+    else:
+        escolhida = rng.choices(empatadas, weights=pesos, k=1)[0]
 
     desvios += _desvios(escolhida, req, alturas_arena)
     areas = list(escolhida)
@@ -189,7 +217,6 @@ def uma_area(meta: Metaarena, rng: random.Random, tipo: str, contexto: str = "")
     if not opcoes:
         legiveis = {
             "PRECISION": "mesa de precisao (PP)",
-            "STACKING": "area de empilhamento (ST)",
             "SHELF": "prateleira (SH)",
             "WORKSTATION": "workstation (WS)",
         }

@@ -8,13 +8,68 @@ Segoe UI Variable, respiro generoso e o azul de acento do sistema.
 
 Nao ha cantos arredondados: o ttk nao os suporta. O que substitui e' o
 espacamento e o contraste suave entre a superficie da janela e os cartoes.
+
+Nitidez e escala: sem declarar o processo como "DPI aware", o Windows desenha a
+janela a 96 dpi e ESTICA o bitmap em telas com escala de 125 % ou mais — tudo
+fica borrado. `ativar_nitidez()` (chamada antes de criar a janela) resolve; a
+partir dai o Tk passa a trabalhar em pixels reais, as fontes (em pontos)
+crescem sozinhas e toda medida em pixel do programa passa por `px()`.
 """
 
 from __future__ import annotations
 
+import sys
 import tkinter as tk
 from tkinter import font as tkfont
 from tkinter import ttk
+
+DPI_BASE = 96.0     # dpi em que as medidas do programa foram desenhadas
+_escala = 1.0
+
+
+def ativar_nitidez() -> None:
+    """Declara o processo como DPI aware. Chamar ANTES de criar qualquer janela."""
+    if sys.platform != "win32":
+        return
+    import ctypes
+
+    try:
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)   # por monitor (Windows 8.1+)
+    except (AttributeError, OSError):
+        try:
+            ctypes.windll.user32.SetProcessDPIAware()    # Windows antigo
+        except (AttributeError, OSError):
+            pass
+
+
+def px(valor: float) -> int:
+    """Converte uma medida desenhada a 96 dpi para pixels reais da tela."""
+    return max(1, round(valor * _escala)) if valor else 0
+
+
+def _pad(*valores: float) -> tuple[int, ...]:
+    return tuple(px(v) for v in valores)
+
+
+def dimensionar(janela: tk.Misc, largura: int, altura: int, minimo: tuple[int, int] | None = None) -> None:
+    """Tamanho inicial em pixels reais, limitado a tela e centralizado."""
+    tela_l, tela_a = janela.winfo_screenwidth(), janela.winfo_screenheight()
+    l = min(px(largura), int(tela_l * 0.94))
+    a = min(px(altura), int(tela_a * 0.88))
+    x, y = (tela_l - l) // 2, max(0, (tela_a - a) // 2 - px(20))
+    janela.geometry(f"{l}x{a}+{x}+{y}")
+    if minimo:
+        janela.minsize(min(px(minimo[0]), l), min(px(minimo[1]), a))
+
+
+def quebra_automatica(rotulo: tk.Misc, recipiente: tk.Misc, margem: int = 24) -> None:
+    """Faz o texto do rotulo quebrar na largura do recipiente, acompanhando a janela."""
+    def ajustar(evento) -> None:
+        largura = max(px(120), evento.width - px(margem))
+        if int(str(rotulo.cget("wraplength")) or 0) != largura:
+            rotulo.configure(wraplength=largura)
+
+    recipiente.bind("<Configure>", ajustar, add="+")
 
 # ------------------------------------------------------------------ paleta
 JANELA = "#F3F3F3"        # fundo da janela (Mica claro)
@@ -76,6 +131,8 @@ def tipografia(raiz: tk.Misc | None = None) -> Tipografia:
 
 def aplicar(raiz: tk.Misc) -> Tipografia:
     """Instala o tema na janela e devolve a tipografia resolvida."""
+    global _escala
+    _escala = max(1.0, raiz.winfo_fpixels("1i") / DPI_BASE)
     fontes = tipografia(raiz)
     estilo = ttk.Style(raiz)
     estilo.theme_use("clam")
@@ -84,23 +141,40 @@ def aplicar(raiz: tk.Misc) -> Tipografia:
     for nome in ("TkDefaultFont", "TkTextFont", "TkMenuFont"):
         tkfont.nametofont(nome).configure(family=fontes.corpo.cget("family"), size=10)
 
-    comum = {"background": JANELA, "foreground": TEXTO, "font": fontes.corpo}
-    estilo.configure(".", **comum, borderwidth=0, relief="flat")
-    estilo.configure("TFrame", background=JANELA)
+    # Todo o conteudo vive sobre a superficie branca (CARTAO); o cinza da janela
+    # so aparece como moldura em volta das abas e na barra de status. Assim
+    # nenhum rotulo fica com "etiqueta cinza" atras do texto.
+    comum = {"background": CARTAO, "foreground": TEXTO, "font": fontes.corpo}
+    estilo.configure(".", background=JANELA, foreground=TEXTO, font=fontes.corpo,
+                     borderwidth=0, relief="flat")
+    estilo.configure("TFrame", background=CARTAO)
+    estilo.configure("Cartao.TFrame", background=CARTAO)
+    estilo.configure("Janela.TFrame", background=JANELA)
     estilo.configure("TLabel", **comum)
-    estilo.configure("Fraco.TLabel", background=JANELA, foreground=TEXTO_FRACO,
+    estilo.configure("Fraco.TLabel", background=CARTAO, foreground=TEXTO_FRACO,
                      font=fontes.pequena)
-    estilo.configure("Titulo.TLabel", background=JANELA, foreground=TEXTO, font=fontes.titulo)
-    estilo.configure("Subtitulo.TLabel", background=JANELA, foreground=TEXTO,
+    estilo.configure("Titulo.TLabel", background=CARTAO, foreground=TEXTO, font=fontes.titulo)
+    estilo.configure("Subtitulo.TLabel", background=CARTAO, foreground=TEXTO,
                      font=fontes.subtitulo)
+    estilo.configure("Barra.TLabel", background=JANELA, foreground=TEXTO_FRACO,
+                     font=fontes.pequena)
     estilo.configure("Cartao.TLabel", background=CARTAO, foreground=TEXTO, font=fontes.corpo)
     estilo.configure("CartaoFraco.TLabel", background=CARTAO, foreground=TEXTO_FRACO,
                      font=fontes.pequena)
 
+    # ------------------------------------------------------------ cabecalho
+    estilo.configure("Cabecalho.TFrame", background=CARTAO)
+    estilo.configure("CabecalhoTitulo.TLabel", background=CARTAO, foreground=TEXTO,
+                     font=fontes.titulo)
+    estilo.configure("CabecalhoSub.TLabel", background=CARTAO, foreground=TEXTO_FRACO,
+                     font=fontes.pequena)
+    estilo.configure("CabecalhoInfo.TLabel", background=CARTAO, foreground=TEXTO,
+                     font=fontes.corpo)
+
     # -------------------------------------------------------------- cartoes
     estilo.configure(
         "TLabelframe", background=CARTAO, bordercolor=BORDA,
-        borderwidth=1, relief="solid", padding=12,
+        borderwidth=1, relief="solid", padding=px(14),
     )
     estilo.configure(
         "TLabelframe.Label", background=CARTAO, foreground=TEXTO_FRACO, font=fontes.forte
@@ -110,7 +184,7 @@ def aplicar(raiz: tk.Misc) -> Tipografia:
     estilo.configure(
         "TButton", background="#FBFBFB", foreground=TEXTO, font=fontes.corpo,
         bordercolor=BORDA_FORTE, borderwidth=1, relief="solid",
-        padding=(14, 7), focuscolor=ACENTO_CLARO, anchor="center",
+        padding=_pad(14, 7), focuscolor=ACENTO_CLARO, anchor="center",
     )
     estilo.map(
         "TButton",
@@ -120,9 +194,23 @@ def aplicar(raiz: tk.Misc) -> Tipografia:
     )
     estilo.configure(
         "Acento.TButton", background=ACENTO, foreground="#FFFFFF",
-        bordercolor=ACENTO, borderwidth=1, relief="solid", padding=(18, 8),
+        bordercolor=ACENTO, borderwidth=1, relief="solid", padding=_pad(18, 8),
         font=fontes.forte,
     )
+    # Acao que encerra algo (STOP do cronometro): contorno e texto em vermelho.
+    estilo.configure(
+        "Perigo.TButton", background="#FFFFFF", foreground=ERRO,
+        bordercolor=ERRO, borderwidth=1, relief="solid", padding=_pad(18, 8),
+        font=fontes.forte,
+    )
+    estilo.map(
+        "Perigo.TButton",
+        background=[("pressed", "#F6D5D1"), ("active", "#FDECEA"), ("disabled", "#F5F5F5")],
+        bordercolor=[("disabled", BORDA)],
+        foreground=[("disabled", "#A0A0A0")],
+    )
+    # Botoes de acao secundaria com o mesmo corpo dos principais (cronometro).
+    estilo.configure("Largo.TButton", padding=_pad(18, 8), font=fontes.forte)
     estilo.map(
         "Acento.TButton",
         background=[("pressed", "#00519E"), ("active", ACENTO_HOVER), ("disabled", "#CFCFCF")],
@@ -135,7 +223,8 @@ def aplicar(raiz: tk.Misc) -> Tipografia:
         estilo.configure(
             classe, fieldbackground=CAMPO, background=CAMPO, foreground=TEXTO,
             bordercolor=BORDA_FORTE, lightcolor=BORDA_FORTE, darkcolor=BORDA_FORTE,
-            borderwidth=1, relief="solid", padding=(8, 6), arrowcolor=TEXTO_FRACO,
+            borderwidth=1, relief="solid", padding=_pad(8, 5), arrowcolor=TEXTO_FRACO,
+            arrowsize=px(12),
             insertcolor=TEXTO, selectbackground=SELECAO, selectforeground=TEXTO,
         )
         estilo.map(
@@ -154,38 +243,53 @@ def aplicar(raiz: tk.Misc) -> Tipografia:
 
     estilo.configure(
         "TCheckbutton", background=CARTAO, foreground=TEXTO, font=fontes.corpo,
-        indicatorcolor=CAMPO, indicatorrelief="solid", indicatormargin=(0, 0, 8, 0),
-        focuscolor=CARTAO, padding=(0, 4),
+        indicatorbackground=CAMPO, indicatorforeground="#FFFFFF",
+        indicatormargin=_pad(0, 0, 8, 0), indicatorsize=px(15),
+        upperbordercolor=BORDA_FORTE, lowerbordercolor=BORDA_FORTE,
+        focuscolor=CARTAO, padding=_pad(0, 4),
     )
     estilo.map(
         "TCheckbutton",
-        indicatorcolor=[("selected", ACENTO), ("pressed", ACENTO_CLARO)],
+        indicatorbackground=[("selected", ACENTO), ("pressed", ACENTO_CLARO)],
+        upperbordercolor=[("selected", ACENTO)],
+        lowerbordercolor=[("selected", ACENTO)],
         background=[("active", CARTAO)],
     )
     estilo.configure("Janela.TCheckbutton", background=JANELA)
     estilo.map("Janela.TCheckbutton", background=[("active", JANELA)])
 
     # ----------------------------------------------------------------- abas
-    estilo.configure("TNotebook", background=JANELA, borderwidth=0, tabmargins=(0, 6, 0, 0))
+    # Abas planas, todas do mesmo tamanho: a ativa e' o cartao branco com texto
+    # em azul; as outras se fundem ao fundo da janela, sem moldura.
+    estilo.configure(
+        "TNotebook", background=JANELA, borderwidth=0, tabmargins=_pad(0, 4, 0, 0),
+        bordercolor=BORDA, lightcolor=BORDA, darkcolor=BORDA,
+    )
     estilo.configure(
         "TNotebook.Tab", background=JANELA, foreground=TEXTO_FRACO,
-        font=fontes.corpo, padding=(18, 9), borderwidth=0,
+        font=fontes.forte, padding=_pad(22, 10), borderwidth=0,
+        bordercolor=JANELA, lightcolor=JANELA, darkcolor=JANELA, focuscolor=JANELA,
     )
     estilo.map(
         "TNotebook.Tab",
-        background=[("selected", CARTAO), ("active", "#EAEAEA")],
+        background=[("selected", CARTAO), ("active", "#E9E9E9")],
         foreground=[("selected", ACENTO), ("active", TEXTO)],
-        font=[("selected", fontes.forte)],
+        bordercolor=[("selected", BORDA)],
+        lightcolor=[("selected", CARTAO)],
+        darkcolor=[("selected", BORDA)],
+        focuscolor=[("selected", CARTAO)],
+        padding=[("selected", _pad(22, 10))],
+        expand=[("selected", (0, 0, 0, 0))],
     )
 
     # ---------------------------------------------------------------- tabela
     estilo.configure(
         "Treeview", background=CARTAO, fieldbackground=CARTAO, foreground=TEXTO,
-        rowheight=30, borderwidth=1, relief="solid", bordercolor=BORDA, font=fontes.corpo,
+        rowheight=px(32), borderwidth=1, relief="solid", bordercolor=BORDA, font=fontes.corpo,
     )
     estilo.configure(
         "Treeview.Heading", background="#FAFAFA", foreground=TEXTO_FRACO,
-        font=fontes.forte, relief="flat", borderwidth=0, padding=(8, 8),
+        font=fontes.forte, relief="flat", borderwidth=0, padding=_pad(8, 8),
     )
     estilo.map(
         "Treeview.Heading",
@@ -208,7 +312,7 @@ def aplicar(raiz: tk.Misc) -> Tipografia:
     estilo.configure(
         "Vertical.TScrollbar", background="#F7F7F7", troughcolor=JANELA,
         bordercolor=JANELA, arrowcolor=TEXTO_FRACO, borderwidth=0, relief="flat",
-        width=12,
+        width=px(12), arrowsize=px(12),
     )
     estilo.configure(
         "Horizontal.TScrollbar", background="#F7F7F7", troughcolor=JANELA,
@@ -219,5 +323,11 @@ def aplicar(raiz: tk.Misc) -> Tipografia:
 
     estilo.configure("TSeparator", background=BORDA)
     estilo.configure("TPanedwindow", background=JANELA)
+    # Botao discreto da barra de status (mostrar/ocultar o registro).
+    estilo.configure(
+        "Barra.TButton", background=JANELA, foreground=ACENTO, font=fontes.pequena,
+        borderwidth=0, relief="flat", padding=_pad(8, 3),
+    )
+    estilo.map("Barra.TButton", background=[("active", "#E9E9E9"), ("pressed", "#DDDDDD")])
 
     return fontes

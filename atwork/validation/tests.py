@@ -39,6 +39,13 @@ def _em_tipo(task: Task, fase: str, tipo: str) -> list:
     )
 
 
+def _na_pilha(task: Task) -> list:
+    """Objetos que terminam na mesa da zona de empilhamento em uso."""
+    if task.empilhamento is None:
+        return []
+    return sorted(i.cubo for i in task.itens_de(task.empilhamento, "fim") if not i.decoy)
+
+
 def _todos_transportados(task: Task, erros: Erros) -> None:
     parados = [c for c in task.cubos if c not in task.transportados()]
     if parados:
@@ -106,8 +113,8 @@ def _att1(task: Task, erros: Erros, ideal: bool) -> None:
     pilhas = task.pilhas("fim")
     if len(pilhas) != 1 or len(pilhas[0]) != 2:
         erros.append("ATT1 monta exatamente uma pilha de 2 ATTCs")
-    if len(_em_tipo(task, "fim", "STACKING")) != 2:
-        erros.append("ATT1: a pilha fica na area de empilhamento, sobre a tag de referencia")
+    if len(_na_pilha(task)) != 2:
+        erros.append("ATT1: a pilha fica na zona de empilhamento, sobre a tag de referencia")
     if not ideal:
         return
     if len(task.ativas) != rules.N_AREAS_ALVO["ATT1"]:
@@ -150,8 +157,8 @@ def _att2(task: Task, erros: Erros, ideal: bool) -> None:
 def _final(task: Task, erros: Erros, ideal: bool) -> None:
     _todos_transportados(task, erros)
 
-    if len(_em_tipo(task, "fim", "STACKING")) != 2:
-        erros.append("a Final empilha 2 ATTCs na area de empilhamento")
+    if len(_na_pilha(task)) != 2:
+        erros.append("a Final empilha 2 ATTCs na zona de empilhamento")
     if not any(len(p) == 2 for p in task.pilhas("fim")):
         erros.append("a Final termina com uma pilha de 2 ATTCs montada")
     if len(_em_tipo(task, "fim", "PRECISION")) != 2:

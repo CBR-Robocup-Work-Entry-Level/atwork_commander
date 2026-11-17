@@ -74,8 +74,35 @@ class Contexto:
         return cubos
 
     def capacidades(self) -> dict[str, int]:
-        """Posicoes livres por area ativa, ja descontando os containers."""
-        return {a.id: self.task.capacidade_livre(a.id) for a in self.task.ativas}
+        """Posicoes livres por area ativa, ja descontando os containers.
+
+        A mesa da zona de empilhamento em uso nao recebe objeto solto: zero.
+        """
+        return {
+            a.id: 0 if a.id == self.task.empilhamento else self.task.capacidade_livre(a.id)
+            for a in self.task.ativas
+        }
+
+    def mesas(self) -> list[ServiceArea]:
+        """Workstations ativas que funcionam como mesa comum nesta prova.
+
+        Fica de fora a mesa da zona de empilhamento quando a zona esta em uso.
+        """
+        return [
+            a for a in self.task.ativas
+            if a.tipo == "WORKSTATION" and a.id != self.task.empilhamento
+        ]
+
+    def usar_empilhamento(self) -> ServiceArea:
+        """Poe em uso a zona de empilhamento da arena e devolve a mesa dela."""
+        zona = self.meta.empilhamento()
+        if zona is None:
+            raise GenerationError(
+                f"{self.prova} empilha ATTCs, e nenhuma workstation da arena hospeda a "
+                f"zona de empilhamento. Marque a mesa na aba Arena."
+            )
+        self.builder.usar_empilhamento(zona.id)
+        return zona
 
     def containers_em(self, workstations: list[ServiceArea]) -> dict[str, str]:
         por_cor = objects.sortear_containers(self.rng, self.meta, workstations)
@@ -88,7 +115,7 @@ class Contexto:
 
     # -------------------------------------------------------------- decoys
     def _cabe_decoy(self, area: ServiceArea, decoy: Cubo) -> bool:
-        if area.tipo != "WORKSTATION":
+        if area.tipo != "WORKSTATION" or area.id == self.task.empilhamento:
             return False
         for fase in ("inicio", "fim"):
             itens = self.task.itens_de(area.id, fase)
