@@ -256,8 +256,10 @@ def _aba_prova(wb: Workbook, roteiro: Roteiro) -> None:
         "robô bateu em objeto, decoy ou container. −50 por captura/entrega.",
         "Reinício (5.6): só a última tentativa conta. Depois do reinício, desmarque tudo na aba "
         "da equipe; o tempo restante continua do cronômetro.",
-        "Tempo restante: os segundos que sobraram no STOP; 0 se não concluiu. Só vira ponto "
-        "com Perfect Run (todos os objetivos entregues e o robô no FINISH).",
+        "Perfect Run (5.1): o juiz marca a caixa quando todas as tarefas foram concluídas com "
+        "sucesso dentro do tempo — qualquer penalidade tira o Perfect Run. Só com ele valem o "
+        "bônus de Perfect Run e o bônus de tempo (segundos que sobraram no STOP; 0 se não "
+        "concluiu).",
     ]
     for regra in regras:
         linha += 1
@@ -383,6 +385,10 @@ def _aba_equipe(wb: Workbook, roteiro: Roteiro, equipe: str, nome_aba: str) -> d
     linha += 2
     f.secao(linha, "RODADA")
     c_finish = campo("Chegou ao FINISH")
+    # Perfect Run e' decisao do juiz, nao conta automatica: "todas as tarefas
+    # concluidas com sucesso" (5.1) nao se reduz a caixas marcadas — uma
+    # penalidade, por exemplo, ja tira o Perfect Run.
+    c_perfect = campo("Perfect Run", "tudo concluído, sem penalidade")
     c_linha = campo("Sem segue-linha", "bônus de 20 %")
     c_tempo = campo("Tempo restante (s)", "0 se não concluiu", tipo="numero")
     campo("Reinício usado", "só vale a última tentativa")
@@ -447,19 +453,11 @@ def _aba_equipe(wb: Workbook, roteiro: Roteiro, equipe: str, nome_aba: str) -> d
         f"=IF(N({c_fita})>=3,PCT_FITA_3,IF(N({c_fita})=2,PCT_FITA_2,"
         f"IF(N({c_fita})>=1,PCT_FITA_1,0)))", "0%",
     )
-    p_perfect_sn = parcela(
-        f"Perfect Run ({n_obj} entregues + FINISH)",
-        f'=IF(AND(COUNTIF(G{obj_ini}:G{obj_fim},TRUE)={n_obj},{c_finish}),"SIM","NÃO")', "@",
-    )
-    ws.conditional_formatting.add(
-        p_perfect_sn, CellIsRule(operator="equal", formula=['"SIM"'], fill=_fundo(VERDE),
-                                 font=Font(name=FONTE, bold=True, color=VERDE_TEXTO)),
-    )
-    p_perfect = parcela("Bônus Perfect Run",
-                        f'=IF({p_perfect_sn}="SIM",{n_obj}*PT_PERFECT_OBJ,0)')
+    p_perfect = parcela(f"Bônus Perfect Run ({n_obj} × 30)",
+                        f"=IF({c_perfect},{n_obj}*PT_PERFECT_OBJ,0)")
     p_tempo = parcela(
-        "Bônus de tempo",
-        f'=IF({p_perfect_sn}="SIM",ROUNDUP(MAX(0,N({c_tempo})),0)*PT_TEMPO_S,0)',
+        "Bônus de tempo (só com Perfect Run)",
+        f"=IF({c_perfect},ROUNDUP(MAX(0,N({c_tempo})),0)*PT_TEMPO_S,0)",
     )
     p_linha = parcela("Bônus sem segue-linha", f"=IF({c_linha},PCT_SEGUE_LINHA,0)", "0%")
     total = parcela(
@@ -477,7 +475,7 @@ def _aba_equipe(wb: Workbook, roteiro: Roteiro, equipe: str, nome_aba: str) -> d
     ws["F3"].number_format = "0"
 
     _imprimir_em_paisagem(ws)
-    return {"aba": nome_aba, "equipe": "C3", "total": total, "perfect": p_perfect_sn,
+    return {"aba": nome_aba, "equipe": "C3", "total": total, "perfect": c_perfect,
             "tempo": c_tempo}
 
 
@@ -503,8 +501,8 @@ def _aba_classificacao(wb: Workbook, roteiro: Roteiro, equipes: list[dict[str, s
         c.hyperlink = f"#'{eq['aba']}'!A1"
         f.texto(f"D{linha}", f"={_ref(eq['aba'], eq['total'])}",
                 _f(14, negrito=True, cor=ACENTO), CENTRO, grade=True).number_format = "0"
-        f.texto(f"E{linha}", f"={_ref(eq['aba'], eq['perfect'])}", _f(11, negrito=True), CENTRO,
-                grade=True)
+        f.texto(f"E{linha}", f'=IF({_ref(eq["aba"], eq["perfect"])},"SIM","NÃO")',
+                _f(11, negrito=True), CENTRO, grade=True)
         f.texto(f"F{linha}", f"=N({_ref(eq['aba'], eq['tempo'])})", _f(11), CENTRO,
                 grade=True).number_format = "0"
         f.texto(f"B{linha}", f"=RANK(D{linha},$D${primeira}:$D${ultima})",
