@@ -1,7 +1,8 @@
 """Janela principal do @Work Commander.
 
-Quatro abas, na ordem em que o trabalho acontece: cadastrar a arena, cadastrar
-o que existe de objeto nela, gerar a task e cronometrar a rodada. A metaarena
+Cinco abas, na ordem em que o trabalho acontece: cadastrar a arena, cadastrar
+o que existe de objeto nela, gerar a task, cronometrar a rodada e gerar a
+planilha de pontuacao dos juizes. A metaarena
 vive em pasta de dados do usuario (ver atwork.paths) e e' salva pelo menu ou
 pelo atalho Ctrl+S.
 """
@@ -18,6 +19,7 @@ from atwork.ui import theme
 from atwork.ui.arena_tab import AbaArena
 from atwork.ui.generate_tab import AbaGerar
 from atwork.ui.inventory_tab import AbaInventario
+from atwork.ui.planilha_tab import AbaPlanilha
 from atwork.ui.timer_tab import AbaCronometro
 from atwork.ui.widgets import CORES_ESTADO, Console
 
@@ -118,7 +120,7 @@ class AppCommander(tk.Tk):
         barra.add_cascade(label="Arquivo", menu=arquivo)
 
         ir = tk.Menu(barra, tearoff=False)
-        for indice, nome in enumerate(("Arena", "Inventario", "Gerar task", "Cronometro")):
+        for indice, nome in enumerate(("Arena", "Inventário", "Gerar task", "Cronômetro", "Planilha dos juízes")):
             ir.add_command(label=nome, command=lambda i=indice: self.abas.select(i))
         barra.add_cascade(label="Ir para", menu=ir)
 
@@ -182,6 +184,8 @@ class AppCommander(tk.Tk):
         self.abas.add(self.aba_gerar, text="  3. Gerar task  ")
         self.aba_cronometro = AbaCronometro(self.abas, self)
         self.abas.add(self.aba_cronometro, text="  4. Cronômetro  ")
+        self.aba_planilha = AbaPlanilha(self.abas, self)
+        self.abas.add(self.aba_planilha, text="  5. Planilha dos juízes  ")
 
         # Barra de status: a ultima mensagem numa linha so. O registro completo
         # da sessao abre sob demanda, para nao roubar altura das abas.

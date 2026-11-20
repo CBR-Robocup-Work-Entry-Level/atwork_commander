@@ -21,6 +21,7 @@ a task, eles entram so como lista informativa para o juiz.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 from atwork import rules
@@ -160,6 +161,17 @@ def de_yaml_equipe(doc: dict) -> Roteiro:
         objetos=objetos,
         avisos=avisos,
     )
+
+
+def seed_do_nome(nome_arquivo: str) -> int | None:
+    """ATT1_seed42_equipe.yaml -> 42. A seed so serve para nomear a planilha."""
+    achado = re.search(r"_seed(\d+)", nome_arquivo)
+    return int(achado.group(1)) if achado else None
+
+
+def eh_arquivo_de_equipe(doc) -> bool:
+    """O guia do juiz tambem e' YAML; so o arquivo de equipe tem objects/finish_state."""
+    return isinstance(doc, dict) and "objects" in doc and "finish_state" in doc
 
 
 def de_task(task) -> Roteiro:

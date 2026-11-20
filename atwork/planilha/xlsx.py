@@ -5,13 +5,13 @@ Um arquivo por task, com tres tipos de aba:
 - **Prova**: o que a task pede (objetivos, areas, decoys) e a TABELA DE PONTOS,
   editavel. Cada valor tem um nome definido (PT_CAPTURA, PEN_QUEDA...) que as
   formulas das equipes usam: o TC ajusta um valor e tudo recalcula.
-- **Equipe 1..N**: a folha de uma rodada. O juiz marca `x` nos objetivos e nas
-  areas, digita os contadores de penalidade e o tempo restante; o total no
-  topo atualiza em tempo real.
+- **uma aba por equipe**, com o nome da equipe: a folha de uma rodada. O juiz
+  marca `x` nos objetivos e nas areas, digita os contadores de penalidade e o
+  tempo restante; o total no topo atualiza em tempo real.
 - **Classificacao**: total, Perfect Run e posicao de cada equipe.
 
-So as celulas de entrada ficam desbloqueadas: a protecao (sem senha) evita que
-alguem apague uma formula sem querer. Revisao > Desproteger planilha libera.
+Nada fica congelado nem protegido: o juiz rola, redimensiona e corrige a
+vontade. As celulas de preencher se distinguem pelo fundo amarelo.
 """
 
 from __future__ import annotations
@@ -237,14 +237,38 @@ def _aba_prova(wb: Workbook, roteiro: Roteiro) -> None:
         f.mesclar(f"B{linha}:F{linha}", "•  " + regra, fonte=_f(10))
         ws.row_dimensions[linha].height = 30
 
-    ws.protection.sheet = True
     _imprimir_em_paisagem(ws)
 
 
 # ------------------------------------------------------------------- Equipe
-def _aba_equipe(wb: Workbook, roteiro: Roteiro, numero: int) -> dict[str, str]:
+ABAS_RESERVADAS = {"prova", "classificação", "classificacao"}
+PROIBIDOS_NA_ABA = set('[]:*?/\\')
+MAX_NOME_ABA = 31          # limite do Excel
+
+
+def nome_de_aba(nome: str, usados: set[str]) -> str:
+    """Nome de aba valido no Excel para a equipe, sem repetir os ja usados.
+
+    O Excel recusa []:*?/\\, mais de 31 caracteres e nomes repetidos (sem
+    diferenciar maiuscula). Apostrofo vira o tipografico para nao quebrar as
+    referencias entre abas ('Equipe'!A1).
+    """
+    limpo = "".join(" " if ch in PROIBIDOS_NA_ABA else ch for ch in nome)
+    limpo = " ".join(limpo.replace("'", "’").split()).strip("’") or "Equipe"
+    if limpo.lower() in ABAS_RESERVADAS:
+        limpo = f"Equipe {limpo}"
+    base, n = limpo[:MAX_NOME_ABA], 2
+    candidato = base
+    while candidato.lower() in usados:
+        sufixo = f" ({n})"
+        candidato = base[:MAX_NOME_ABA - len(sufixo)] + sufixo
+        n += 1
+    usados.add(candidato.lower())
+    return candidato
+
+
+def _aba_equipe(wb: Workbook, roteiro: Roteiro, equipe: str, nome_aba: str) -> dict[str, str]:
     """Cria a aba de uma equipe e devolve as celulas que a Classificacao le."""
-    nome_aba = f"Equipe {numero}"
     ws = wb.create_sheet(nome_aba)
     f = _Folha(ws)
     for col, largura in COLUNAS.items():
@@ -268,13 +292,14 @@ def _aba_equipe(wb: Workbook, roteiro: Roteiro, numero: int) -> dict[str, str]:
         ws.row_dimensions[linha_cab].height = 24
         f.mesclar(f"B{linha_cab}:C{linha_cab}", rotulo, fonte=_f(11, negrito=True),
                   alinhamento=LINHA_UNICA)
-    f.entrada("D3:F3").alignment = ESQUERDA
+    nome_celula = f.entrada("D3:F3")
+    nome_celula.alignment = ESQUERDA
+    nome_celula.value = equipe
     f.entrada("D4:F4").alignment = ESQUERDA
     f.entrada("D5").number_format = "@"
     f.texto("E5", f"Duração da prova: {roteiro.duracao_min} min", _f(10, cor=TEXTO_FRACO),
             LINHA_UNICA)
     f.mesclar("H3:H4", "TOTAL", fonte=_f(12, negrito=True, cor=TEXTO_FRACO), alinhamento=CENTRO)
-    ws.freeze_panes = "A7"
 
     linha = 7
     objetivos = roteiro.objetivos
@@ -507,9 +532,8 @@ def _aba_equipe(wb: Workbook, roteiro: Roteiro, numero: int) -> dict[str, str]:
               fundo=ACENTO_CLARO)
     ws["I3"].number_format = "0"
 
-    ws.protection.sheet = True
     _imprimir_em_paisagem(ws)
-    ws.print_title_rows = "1:6"
+    ws.print_title_rows = "1:6"          # so na impressao; na tela nada fica congelado
     return {"aba": nome_aba, "equipe": "D3", "total": total, "perfect": p_perfect_sn,
             "tempo": c_tempo, "juizes": "D4"}
 
@@ -523,8 +547,8 @@ def _aba_classificacao(wb: Workbook, roteiro: Roteiro, equipes: list[dict[str, s
 
     f.texto("B1", f"Classificação — {roteiro.task_id} · {roteiro.nome}", _f(16, negrito=True),
             LINHA_UNICA)
-    f.texto("B2", "Preenchida a partir das abas das equipes. Aparece quem tem o nome da "
-                  "equipe preenchido.", _f(10, cor=TEXTO_FRACO), LINHA_UNICA)
+    f.texto("B2", "Preenchida a partir das abas das equipes. Clique no nome da aba para ir "
+                  "até ela.", _f(10, cor=TEXTO_FRACO), LINHA_UNICA)
     f.cabecalho(4, {"B": "Posição", "C": "Equipe", "D": "Total", "E": "Perfect Run",
                     "F": "Tempo restante (s)", "G": "Aba", "H": "Juízes"})
     primeira, ultima = 5, 4 + len(equipes)
@@ -553,20 +577,32 @@ def _aba_classificacao(wb: Workbook, roteiro: Roteiro, equipes: list[dict[str, s
         FormulaRule(formula=[f"$B{primeira}=1"], fill=_fundo("FFF2CC"),
                     font=Font(name=FONTE, bold=True, color="7F6000")),
     )
-    ws.protection.sheet = True
     _imprimir_em_paisagem(ws)
 
 
 # --------------------------------------------------------------- publico
-def montar(roteiro: Roteiro, equipes: int = rules.PLANILHA_EQUIPES) -> Workbook:
-    """Workbook completo: Prova, Classificacao e uma aba por equipe."""
+def nomes_genericos(quantas: int) -> list[str]:
+    return [f"Equipe {n}" for n in range(1, max(1, quantas) + 1)]
+
+
+def montar(roteiro: Roteiro, equipes: list[str] | int = rules.PLANILHA_EQUIPES) -> Workbook:
+    """Workbook completo: Prova, Classificacao e uma aba por equipe.
+
+    `equipes` e' a lista de nomes, na ordem das abas, ou so a quantidade (abas
+    "Equipe 1..N", para preencher o nome depois).
+    """
     if not roteiro.objetivos:
         raise ValueError(f"{roteiro.task_id}: a task não tem nenhum objetivo a pontuar")
+    nomes = nomes_genericos(equipes) if isinstance(equipes, int) else list(equipes)
+    nomes = [n.strip() for n in nomes if n and n.strip()]
+    if not nomes:
+        raise ValueError("informe pelo menos uma equipe")
     wb = Workbook()
     _aba_prova(wb, roteiro)
-    celulas = [_aba_equipe(wb, roteiro, n) for n in range(1, max(1, equipes) + 1)]
+    usados = set(ABAS_RESERVADAS)
+    celulas = [_aba_equipe(wb, roteiro, nome, nome_de_aba(nome, usados)) for nome in nomes]
     _aba_classificacao(wb, roteiro, celulas)
-    wb.active = wb.sheetnames.index("Equipe 1")
+    wb.active = wb.sheetnames.index(celulas[0]["aba"])
     return wb
 
 
@@ -575,7 +611,9 @@ def nome_arquivo(roteiro: Roteiro) -> str:
     return f"{roteiro.task_id}{sufixo}_planilha_juizes.xlsx"
 
 
-def gravar(roteiro: Roteiro, destino: Path | str, equipes: int = rules.PLANILHA_EQUIPES) -> Path:
+def gravar(
+    roteiro: Roteiro, destino: Path | str, equipes: list[str] | int = rules.PLANILHA_EQUIPES
+) -> Path:
     """Grava a planilha. `destino` pode ser a pasta ou o caminho completo do .xlsx."""
     destino = Path(destino)
     if destino.suffix.lower() != ".xlsx":

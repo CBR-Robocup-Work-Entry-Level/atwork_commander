@@ -27,9 +27,11 @@ python main.py gerar ATT2 --seed 42 --decoys 3
 python main.py gerar ATT1 --empilhamento WS_3 # zona de empilhamento em WS_3 nesta geração
 python tools/selftest.py 200                  # estresse: 200 seeds por prova + contrato
 python tools/test_cronometro.py               # máquina de estados do cronômetro
+python main.py planilha ATT2_seed42_equipe.yaml --equipes "FEI;UFMG;Robotronix"
+                                              # planilha dos juízes de uma task salva
 ```
 
-Requer Python 3.10+, PyYAML e tkinter (já vem no Python para Windows).
+Requer Python 3.10+, PyYAML, openpyxl e tkinter (já vem no Python para Windows).
 
 ## Onde ficam os arquivos
 
@@ -45,6 +47,7 @@ projeto:
 - **Tasks geradas:** pasta **Downloads** do usuário por padrão, escolhível no
   preview.
 - **Histórico do cronômetro:** `cronometro.csv`, na mesma pasta da metaarena.
+- **Lista de equipes da planilha dos juízes:** `equipes.json`, na mesma pasta.
 
 ## Fluxo da GUI
 
@@ -68,6 +71,13 @@ projeto:
    continua do tempo guardado (um reinício por rodada, rulebook 5.6). **STOP**
    encerra e registra o tempo final (usado, restante e bônus de tempo) na tela
    e no `cronometro.csv`.
+5. **Planilha dos juízes** — gera, quando você pedir, o `.xlsx` de pontuação de
+   uma task. Escolha o `…_equipe.yaml` (depois de gerar na aba 3 ele já vem
+   preenchido) e digite as equipes, uma por linha, quantas forem. A planilha
+   sai com a aba **Prova** (objetivos, áreas, decoys e a tabela de pontos
+   editável), uma **aba por equipe** com o nome dela e a **Classificação**. O
+   juiz marca `x` nos objetivos e nas áreas, digita penalidades e o tempo
+   restante, e o total atualiza na hora. Nada fica congelado nem protegido.
 
 ## As regras que o arquivo de equipe segue
 
