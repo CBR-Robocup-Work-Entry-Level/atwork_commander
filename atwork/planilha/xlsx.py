@@ -195,6 +195,32 @@ def _aba_prova(wb: Workbook, roteiro: Roteiro) -> None:
         f.texto(f"B{linha}", area.id, _f(11, negrito=True), CENTRO, grade=True)
         f.mesclar(f"C{linha}:F{linha}", area.descricao, grade=True)
 
+    # Mesmas contas da planilha oficial "Pontuação Testes - @Work Brasil".
+    s, o = len(roteiro.areas), len(roteiro.objetivos)
+    linha += 2
+    f.secao(linha, "Pontuação máxima desta prova (sem contar o bônus de tempo)", ultima="F")
+    maximos = (
+        (f"Tarefas: {s} área(s) × 100 + {o} objetivo(s) × 250",
+         f"={s}*PT_AREA+{o}*(PT_IDENT+PT_CAPTURA+PT_ENTREGA)", False),
+        ("Bônus sem segue-linha (20 % das tarefas)", "=TAREFAS_MAX*PCT_SEGUE_LINHA", False),
+        (f"Bônus Perfect Run ({o} × 30)", f"={o}*PT_PERFECT_OBJ", False),
+        ("Máximo com segue-linha", "=TAREFAS_MAX+PERFECT_MAX", True),
+        ("Máximo sem segue-linha", "=TAREFAS_MAX*(1+PCT_SEGUE_LINHA)+PERFECT_MAX", True),
+    )
+    for indice, (rotulo, formula, destaque) in enumerate(maximos):
+        linha += 1
+        f.mesclar(f"B{linha}:E{linha}", rotulo, fonte=_f(10, negrito=destaque), grade=True)
+        f.texto(f"F{linha}", formula, _f(12 if destaque else 11, negrito=True,
+                                         cor=ACENTO if destaque else TEXTO),
+                CENTRO, grade=True).number_format = "0"
+        if indice == 0:
+            wb.defined_names["TAREFAS_MAX"] = DefinedName("TAREFAS_MAX", attr_text=_ref("Prova", f"F{linha}"))
+        elif indice == 2:
+            wb.defined_names["PERFECT_MAX"] = DefinedName("PERFECT_MAX", attr_text=_ref("Prova", f"F{linha}"))
+    linha += 1
+    f.mesclar(f"B{linha}:F{linha}", "Com Perfect Run, cada segundo restante no STOP soma mais 1 "
+              "ponto (bônus de tempo, fora dos 20 %).", fonte=_f(9, cor=TEXTO_FRACO))
+
     linha += 2
     f.secao(linha, "Decoys (não entram no arquivo da equipe)", ultima="F")
     linha += 1

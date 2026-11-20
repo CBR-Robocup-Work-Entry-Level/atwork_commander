@@ -1,16 +1,18 @@
 """Composicao do TOTAL da rodada a partir das parcelas que a aba ja calcula.
 
 Cada parcela fica numa celula visivel da secao "PONTOS" da aba da equipe, para o
-juiz conferir a conta linha a linha. Aqui so se decide como elas se combinam no
-total, que e' a parte do rulebook que deixa margem de leitura. A leitura adotada
-(20/11/2026, a confirmar pelo TC):
+juiz conferir a conta linha a linha. Aqui so se decide como elas se combinam.
 
-1. pontos da execucao = subtotal reduzido pela colisao grave e pela fita
-   - 5.4.1 colisao grave: "50 % dos pontos ja alcancados";
-   - 5.4.3 fita: "penalidade proporcional aos pontos finais da execucao";
-2. + bonus de Perfect Run (5.1) + bonus de tempo (5.2), que sao pontos extras;
-3. x (1 + 20 %) quando a equipe navegou sem o segue-linha: "bonus de 20 % na
-   pontuacao final" (5.1) — por isso entra por ultimo;
+A ordem segue a planilha oficial "Pontuação Testes - @Work Brasil", em que
+pontuacao final = tarefas + 20 % das tarefas (sem segue-linha) + Perfect Run, com
+a nota "o bonus de nao seguir linha e' adicionado ANTES do bonus de Perfect Run":
+
+1. pontos da execucao = subtotal (areas + objetivos + penalidades fixas)
+   reduzido pela colisao grave (5.4.1, "50 % dos pontos ja alcancados") e pela
+   fita (5.4.3, "proporcional aos pontos da execucao");
+2. x (1 + 20 %) quando a equipe navegou sem o segue-linha (5.1) — o bonus
+   incide so sobre os pontos da execucao;
+3. + bonus de Perfect Run (5.1) + bonus de tempo (5.2), fora dos 20 %;
 4. arredondado para inteiro e nunca abaixo de 0; trapaca zera tudo (5.5).
 """
 
@@ -32,5 +34,5 @@ def formula_total(c: dict[str, str]) -> str:
         trapaca      expressao verdadeira quando o juiz marcou trapaca
     """
     execucao = f"{c['subtotal']}*{c['fator_grave']}*(1-{c['pct_fita']})"
-    final = f"({execucao}+{c['perfect']}+{c['tempo']})*(1+{c['pct_linha']})"
+    final = f"{execucao}*(1+{c['pct_linha']})+{c['perfect']}+{c['tempo']}"
     return f"=IF({c['trapaca']},0,MAX(0,ROUND({final},0)))"
