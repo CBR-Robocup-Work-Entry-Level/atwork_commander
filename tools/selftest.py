@@ -27,6 +27,7 @@ from atwork.arena.model import Metaarena, MetaarenaError   # noqa: E402
 from atwork.core.errors import GenerationError             # noqa: E402
 from atwork.export import gerar_yaml, gerar_yaml_juiz      # noqa: E402
 from atwork.export.team_yaml import conferir               # noqa: E402
+from atwork.planilha import de_yaml_equipe, montar         # noqa: E402
 
 MAX_FALHAS = 5
 
@@ -44,7 +45,13 @@ def testar(prova: str, meta: Metaarena, n: int, decoys: int | None) -> tuple[lis
             task = generators.gerar(meta, prova, opcoes)
             texto = gerar_yaml(task)
             gerar_yaml_juiz(task)
-            quebras = conferir(yaml.safe_load(texto))
+            doc = yaml.safe_load(texto)
+            quebras = conferir(doc)
+            roteiro = de_yaml_equipe(doc)
+            if roteiro.avisos or not roteiro.objetivos:
+                falhas.append(f"seed {seed}: planilha sem objetivos ou com avisos: {roteiro.avisos}")
+                continue
+            montar(roteiro, equipes=1)
             if quebras:
                 falhas.append(f"seed {seed}: contrato do arquivo de equipe furado: {quebras}")
                 continue

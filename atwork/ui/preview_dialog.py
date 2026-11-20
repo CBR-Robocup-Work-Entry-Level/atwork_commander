@@ -12,6 +12,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
+from atwork import planilha
 from atwork.core.task import Task
 from atwork.export import arquivos_da_task, gravar
 from atwork.export.writer import destino_padrao
@@ -33,6 +34,7 @@ class DialogoPreview(tk.Toplevel):
         self.configure(background=theme.CARTAO)
         self.transient(pai)
         self.var_destino = tk.StringVar(value=str(destino_padrao()))
+        self.var_planilha = tk.BooleanVar(value=True)
 
         self._montar()
         self._recarregar()
@@ -68,8 +70,13 @@ class DialogoPreview(tk.Toplevel):
             row=0, column=2, padx=6
         )
 
+        ttk.Checkbutton(
+            rodape, text="Gerar também a planilha de pontuação dos juízes (.xlsx)",
+            variable=self.var_planilha,
+        ).grid(row=1, column=0, columnspan=2, sticky="w", pady=(10, 0))
+
         botoes = ttk.Frame(rodape)
-        botoes.grid(row=1, column=0, columnspan=3, sticky="e", pady=(10, 0))
+        botoes.grid(row=1, column=2, sticky="e", pady=(10, 0))
         if self.regerar is not None:
             ttk.Button(botoes, text="Sortear outra seed", command=self._regerar).pack(
                 side="left", padx=(0, 8)
@@ -125,7 +132,11 @@ class DialogoPreview(tk.Toplevel):
 
     def _salvar(self) -> None:
         destino = Path(self.var_destino.get().strip() or destino_padrao())
-        existentes = [a.nome for a in self.arquivos if (destino / a.nome).exists()]
+        nomes = [a.nome for a in self.arquivos]
+        roteiro = planilha.de_task(self.task) if self.var_planilha.get() else None
+        if roteiro is not None:
+            nomes.append(planilha.nome_arquivo(roteiro))
+        existentes = [nome for nome in nomes if (destino / nome).exists()]
         if existentes and not messagebox.askyesno(
             "Sobrescrever",
             "Já existe(m) em " + str(destino) + ":\n\n" + "\n".join(existentes)
@@ -135,8 +146,14 @@ class DialogoPreview(tk.Toplevel):
             return
         try:
             self.salvos = gravar(self.arquivos, destino)
+            if roteiro is not None:
+                self.salvos.append(planilha.gravar(roteiro, destino))
         except OSError as exc:
-            messagebox.showerror("Não foi possível gravar", str(exc), parent=self)
+            messagebox.showerror(
+                "Não foi possível gravar",
+                f"{exc}\n\nSe a planilha estiver aberta no Excel, feche-a e tente de novo.",
+                parent=self,
+            )
             return
         self.destroy()
 

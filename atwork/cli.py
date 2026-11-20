@@ -7,15 +7,19 @@ competicao e para diagnosticar a arena sem abrir janela.
     atwork checar                           situacao da arena, prova por prova
     atwork gerar ATT2 --seed 42 --decoys 3  gera e salva sem preview
     atwork gerar ATT1 --empilhamento WS_3   idem, com a zona de empilhamento em WS_3
+    atwork planilha ATT1_seed42_equipe.yaml planilha dos juizes de uma task salva
 """
 
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
-from atwork import __version__, generators, paths, rules
+import yaml
+
+from atwork import __version__, generators, paths, planilha, rules
 from atwork.arena import carregar
 from atwork.arena.model import Metaarena, MetaarenaError
 from atwork.core.errors import GenerationError
@@ -82,11 +86,36 @@ def cmd_gerar(args) -> int:
 
     destino = Path(args.saida) if args.saida else paths.pasta_downloads()
     caminhos = gravar(arquivos_da_task(task), destino)
+    if not args.sem_planilha:
+        caminhos.append(planilha.gravar(planilha.de_task(task), destino, args.equipes))
     print(f"[{prova}] seed={task.seed}")
     for desvio in task.desvios:
         print(f"    desvio: {desvio}")
     for caminho in caminhos:
         print(f"    -> {caminho}")
+    return 0
+
+
+def cmd_planilha(args) -> int:
+    origem = Path(args.arquivo)
+    try:
+        doc = yaml.safe_load(origem.read_text(encoding="utf-8")) or {}
+    except (OSError, yaml.YAMLError) as exc:
+        print(f"nao foi possivel ler {origem}: {exc}", file=sys.stderr)
+        return 2
+    if "objects" not in doc or "finish_state" not in doc:
+        print(f"{origem}: nao e' um arquivo de equipe (faltam objects/finish_state)",
+              file=sys.stderr)
+        return 2
+    roteiro = planilha.de_yaml_equipe(doc)
+    achado = re.search(r"_seed(\d+)", origem.name)
+    roteiro.seed = int(achado.group(1)) if achado else None
+    destino = Path(args.saida) if args.saida else origem.parent
+    caminho = planilha.gravar(roteiro, destino, args.equipes)
+    print(f"[{roteiro.task_id}] {len(roteiro.objetivos)} objetivos, {len(roteiro.areas)} areas")
+    for aviso in roteiro.avisos:
+        print(f"    aviso: {aviso}")
+    print(f"    -> {caminho}")
     return 0
 
 
@@ -112,15 +141,27 @@ def construir_parser() -> argparse.ArgumentParser:
     gerar.add_argument("--seed", type=int, default=None, help="semente (vazio = sorteia)")
     gerar.add_argument("--decoys", type=int, default=None, help="quantidade de decoys")
     gerar.add_argument("--saida", default=None, help="pasta destino (padrao: Downloads)")
+    gerar.add_argument("--sem-planilha", action="store_true",
+                       help="nao gera a planilha de pontuacao dos juizes (.xlsx)")
+    gerar.add_argument("--equipes", type=int, default=rules.PLANILHA_EQUIPES,
+                       help=f"abas de equipe na planilha (padrao: {rules.PLANILHA_EQUIPES})")
     gerar.add_argument(
         "--empilhamento", default=None, metavar="WS_n",
         help="workstation que hospeda a zona de empilhamento nesta geracao "
              "(padrao: a marcada na metaarena)",
     )
+    plan = sub.add_parser("planilha", help="planilha dos juizes a partir de um arquivo de equipe")
+    plan.add_argument("arquivo", help="o <PROVA>_seed<N>_equipe.yaml da task")
+    plan.add_argument("--equipes", type=int, default=rules.PLANILHA_EQUIPES,
+                      help=f"abas de equipe (padrao: {rules.PLANILHA_EQUIPES})")
+    plan.add_argument("--saida", default=None,
+                      help="pasta ou caminho .xlsx (padrao: a pasta do YAML)")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = construir_parser().parse_args(argv)
-    acao = {"checar": cmd_checar, "gerar": cmd_gerar}.get(args.comando, cmd_gui)
+    acao = {"checar": cmd_checar, "gerar": cmd_gerar, "planilha": cmd_planilha}.get(
+        args.comando, cmd_gui
+    )
     return acao(args)

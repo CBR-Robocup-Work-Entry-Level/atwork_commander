@@ -9,9 +9,12 @@ que nao atende, gera, confere os dois arquivos no preview e so entao baixa.
 from __future__ import annotations
 
 import tkinter as tk
-from tkinter import messagebox, ttk
+from pathlib import Path
+from tkinter import filedialog, messagebox, ttk
 
-from atwork import generators, rules
+import yaml
+
+from atwork import generators, paths, planilha, rules
 from atwork.arena.model import Metaarena, MetaarenaError
 from atwork.core.errors import GenerationError
 from atwork.core.task import Task
@@ -112,8 +115,53 @@ class AbaGerar(ttk.Frame):
             acoes, text="Gerar e pré-visualizar", command=self._gerar, style="Acento.TButton"
         )
         self.btn_gerar.pack()
+        ttk.Button(
+            acoes, text="Planilha dos juízes a partir de um YAML de equipe…",
+            command=self._planilha_de_yaml,
+        ).pack(pady=(theme.px(10), 0))
 
     # -------------------------------------------------------------- acoes
+    def _planilha_de_yaml(self) -> None:
+        """Planilha de pontuação de uma task já gerada (arquivo de equipe salvo)."""
+        origem = filedialog.askopenfilename(
+            parent=self, title="Escolha o arquivo de EQUIPE da task (…_equipe.yaml)",
+            initialdir=str(paths.pasta_downloads()),
+            filetypes=[("YAML", "*.yaml *.yml"), ("Todos", "*.*")],
+        )
+        if not origem:
+            return
+        try:
+            doc = yaml.safe_load(Path(origem).read_text(encoding="utf-8")) or {}
+            if "objects" not in doc or "finish_state" not in doc:
+                raise ValueError(
+                    "este arquivo não é um arquivo de equipe (faltam objects/finish_state). "
+                    "Use o …_equipe.yaml, não o guia do juiz."
+                )
+            roteiro = planilha.de_yaml_equipe(doc)
+            roteiro.seed = _seed_do_nome(Path(origem).name)
+        except (OSError, yaml.YAMLError, ValueError) as exc:
+            messagebox.showerror("Arquivo inválido", str(exc), parent=self)
+            return
+        destino = filedialog.asksaveasfilename(
+            parent=self, title="Salvar planilha dos juízes",
+            initialdir=str(Path(origem).parent), initialfile=planilha.nome_arquivo(roteiro),
+            defaultextension=".xlsx", filetypes=[("Excel", "*.xlsx")],
+        )
+        if not destino:
+            return
+        try:
+            caminho = planilha.gravar(roteiro, destino)
+        except (OSError, ValueError) as exc:
+            messagebox.showerror(
+                "Não foi possível gravar",
+                f"{exc}\n\nSe a planilha estiver aberta no Excel, feche-a e tente de novo.",
+                parent=self,
+            )
+            return
+        self.app.registrar(f"[{roteiro.task_id}] planilha dos juízes: {caminho}", "ok")
+        for aviso in roteiro.avisos:
+            self.app.registrar(f"    {aviso}", "aviso")
+
     def _ao_trocar_prova(self, _evento=None) -> None:
         prova = self.prova()
         self.var_decoys.set(rules.N_DECOYS_PADRAO[prova])
@@ -253,3 +301,11 @@ class AbaGerar(ttk.Frame):
             self.lbl_detalhe.configure(
                 text=f"A arena cadastrada atende ao previsto para {prova}."
             )
+
+
+def _seed_do_nome(nome: str) -> int | None:
+    """ATT1_seed42_equipe.yaml -> 42 (só para o nome da planilha)."""
+    import re
+
+    achado = re.search(r"_seed(\d+)", nome)
+    return int(achado.group(1)) if achado else None

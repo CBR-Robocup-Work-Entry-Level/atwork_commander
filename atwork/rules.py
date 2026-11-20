@@ -170,3 +170,34 @@ MAX_CARGA_ROBO = 3
 # (rulebook 5.6); o tempo restante e' guardado e retomado depois do reinicio.
 PREPARO_S = 180
 MAX_REINICIOS = 1
+
+# --------------------------------------------------------------- pontuacao
+# Tabela de pontos (rulebook 5.1, 5.2, 5.4 e 5.5): (nome, rotulo, valor, secao).
+# A planilha do juiz copia estes valores para a aba "Prova" e as formulas das
+# equipes leem de la pelo nome, entao o TC ajusta um valor no dia da prova sem
+# regerar o arquivo. Penalidades fixas sao negativas; percentuais vao em fracao.
+#
+# Decisoes do Chair (20/11/2026) onde o rulebook deixa margem:
+# - o bonus de tempo so vale com Perfect Run (como no mundial 2025);
+# - a fita vale pelo TOTAL de colisoes: 1 = 5 %, 2 = 10 %, 3 ou mais = 25 %.
+PONTUACAO = (
+    ("PT_AREA", "Chegada a uma área de serviço (cada área ativa, uma vez)", 100, "5.1"),
+    ("PT_IDENT", "Objeto identificado", 50, "5.1"),
+    ("PT_CAPTURA", "Objeto capturado", 100, "4.2 / 5.1"),
+    ("PT_ENTREGA", "Objeto entregue no lugar correto", 100, "5.1"),
+    ("PT_PERFECT_OBJ", "Perfect Run: por objeto da prova", 30, "5.1"),
+    ("PT_TEMPO_S", "Bônus de tempo: por segundo restante (só com Perfect Run)", 1, "5.2"),
+    ("PCT_SEGUE_LINHA", "Bônus por navegar sem o segue-linha", 0.20, "5.1"),
+    ("PEN_QUEDA", "Queda de objeto", -100, "5.5"),
+    ("PEN_INCORRETA", "Manipulação incorreta (objeto errado tirado da zona)", -50, "4.2 / 5.5"),
+    ("PEN_DEDUCAO", "Manipulação deduzida (por captura ou por entrega)", -50, "5.5.1"),
+    ("PEN_COLISAO_LEVE", "Colisão leve", -50, "5.4.2"),
+    ("PEN_INTERACAO", "Interação humana", -100, "5.5"),
+    ("PCT_GRAVE", "Colisão grave: redução da pontuação", 0.50, "5.4.1"),
+    ("PCT_FITA_1", "Colisão com a fita: 1 (total)", 0.05, "5.4.3"),
+    ("PCT_FITA_2", "Colisão com a fita: 2 (total)", 0.10, "5.4.3"),
+    ("PCT_FITA_3", "Colisão com a fita: 3 ou mais (total)", 0.25, "5.4.3"),
+)
+
+# Abas de equipe que a planilha do juiz traz por padrao.
+PLANILHA_EQUIPES = 10
