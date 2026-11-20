@@ -34,11 +34,11 @@ class Lugar:
     """Onde um objeto esta numa das fases."""
 
     area: str
-    detalhe: str            # como o juiz le: "sobre a mesa", "container azul", ...
+    detalhe: str            # "" na mesa comum; "container azul", "nível de cima", ...
     chave: tuple            # o que se compara entre inicio e fim
 
     def __str__(self) -> str:
-        return f"{self.area} — {self.detalhe}"
+        return f"{self.area} · {self.detalhe}" if self.detalhe else self.area
 
 
 @dataclass(frozen=True)
@@ -93,13 +93,14 @@ def _lugares(area_id: str, bloco: dict) -> dict[int, Lugar]:
         # AMT: o arranjo inicial e' escondido de proposito. A chave unica faz o
         # objeto nunca "ja estar no lugar".
         for i in bloco.get("obj_ids") or []:
-            lugares[i] = Lugar(area_id, "slot não informado à equipe", (area_id, "oculto"))
+            lugares[i] = Lugar(area_id, "slot oculto", (area_id, "oculto"))
         return lugares
 
+    # Na mesa comum nao ha detalhe a dizer: so a area basta para o juiz.
     for i in bloco.get("table") or []:
-        lugares[i] = Lugar(area_id, "sobre a mesa", (area_id, "mesa"))
+        lugares[i] = Lugar(area_id, "", (area_id, "mesa"))
     for cor, ids in (bloco.get("containers") or {}).items():
-        texto = f"dentro do container {rules.CORES_PT.get(cor, cor).lower()}"
+        texto = f"container {rules.CORES_PT.get(cor, cor).lower()}"
         for i in ids or []:
             lugares[i] = Lugar(area_id, texto, (area_id, "container", cor))
     for nivel, ids in (bloco.get("levels") or {}).items():
@@ -107,10 +108,10 @@ def _lugares(area_id: str, bloco: dict) -> dict[int, Lugar]:
             lugares[i] = Lugar(area_id, NIVEL_PT.get(nivel, nivel), (area_id, "nivel", nivel))
     for tag, i in (bloco.get("slots") or {}).items():
         if i is not None:
-            lugares[i] = Lugar(area_id, f"slot da tag {tag}", (area_id, "slot", tag))
+            lugares[i] = Lugar(area_id, f"slot {tag}", (area_id, "slot", tag))
     pilha = bloco.get("stack") or []
     for altura, i in enumerate(pilha):
-        texto = "pilha, na base" if altura == 0 else f"pilha, sobre o {pilha[altura - 1]}"
+        texto = "pilha · base" if altura == 0 else f"pilha · sobre o {pilha[altura - 1]}"
         lugares[i] = Lugar(area_id, texto, (area_id, "pilha", altura))
     return lugares
 

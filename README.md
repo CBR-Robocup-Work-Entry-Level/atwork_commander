@@ -73,11 +73,13 @@ projeto:
    e no `cronometro.csv`.
 5. **Planilha dos juízes** — gera, quando você pedir, o `.xlsx` de pontuação de
    uma task. Escolha o `…_equipe.yaml` (depois de gerar na aba 3 ele já vem
-   preenchido) e digite as equipes, uma por linha, quantas forem. A planilha
-   sai com a aba **Prova** (objetivos, áreas, decoys e a tabela de pontos
-   editável), uma **aba por equipe** com o nome dela e a **Classificação**. O
-   juiz marca `x` nos objetivos e nas áreas, digita penalidades e o tempo
-   restante, e o total atualiza na hora. Nada fica congelado nem protegido.
+   preenchido) e monte a lista de equipes: uma linha por equipe, quantas
+   forem, com adicionar, apagar e reordenar. A planilha sai com a aba **Prova**
+   (objetivos, áreas, decoys e a tabela de pontos editável), uma **aba por
+   equipe** com o nome dela e a **Classificação**. Objetivos e áreas são
+   **caixas de seleção** do Excel (um toque marca, também no celular);
+   penalidades e tempo restante são números que já nascem 0. O total atualiza
+   na hora. Nada fica congelado nem protegido, e não há listas nas células.
 
 ## As regras que o arquivo de equipe segue
 

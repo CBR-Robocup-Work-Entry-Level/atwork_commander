@@ -131,8 +131,9 @@ def tipografia(raiz: tk.Misc | None = None) -> Tipografia:
 
 def aplicar(raiz: tk.Misc) -> Tipografia:
     """Instala o tema na janela e devolve a tipografia resolvida."""
-    global _escala
+    global _escala, _tipografia
     _escala = max(1.0, raiz.winfo_fpixels("1i") / DPI_BASE)
+    _tipografia = None      # fontes pertencem a janela: uma janela nova resolve as suas
     fontes = tipografia(raiz)
     estilo = ttk.Style(raiz)
     estilo.theme_use("clam")
@@ -329,5 +330,32 @@ def aplicar(raiz: tk.Misc) -> Tipografia:
         borderwidth=0, relief="flat", padding=_pad(8, 3),
     )
     estilo.map("Barra.TButton", background=[("active", "#E9E9E9"), ("pressed", "#DDDDDD")])
+
+    # Botoes de icone das linhas de uma lista editavel (subir, descer, apagar).
+    estilo.configure(
+        "Icone.TButton", background=CARTAO, foreground=TEXTO_FRACO, font=fontes.corpo,
+        borderwidth=0, relief="flat", padding=_pad(6, 2), width=2, anchor="center",
+    )
+    estilo.map(
+        "Icone.TButton",
+        background=[("active", "#EDEDED"), ("pressed", "#E0E0E0"), ("disabled", CARTAO)],
+        foreground=[("active", TEXTO), ("disabled", "#C8C8C8")],
+    )
+    estilo.configure("Apagar.TButton", background=CARTAO, foreground=TEXTO_FRACO,
+                     font=fontes.corpo, borderwidth=0, relief="flat", padding=_pad(6, 2),
+                     width=2, anchor="center")
+    estilo.map("Apagar.TButton", background=[("active", "#FDECEA"), ("pressed", "#F6D5D1")],
+               foreground=[("active", ERRO)])
+    # Linha zebrada da lista editavel. Os botoes da linha cinza herdam tudo do
+    # estilo base ("Zebra.Icone.TButton" herda de "Icone.TButton") e so trocam o fundo.
+    for base in ("Icone.TButton", "Apagar.TButton"):
+        estilo.configure(f"Zebra.{base}", background="#FAFAFA")
+    estilo.map("Zebra.Icone.TButton",
+               background=[("active", "#EDEDED"), ("pressed", "#E0E0E0"), ("disabled", "#FAFAFA")])
+    estilo.configure("Zebra.TFrame", background="#FAFAFA")
+    estilo.configure("Zebra.TLabel", background="#FAFAFA", foreground=TEXTO_FRACO,
+                     font=fontes.pequena)
+    estilo.configure("Linha.TLabel", background=CARTAO, foreground=TEXTO_FRACO,
+                     font=fontes.pequena)
 
     return fontes

@@ -1,9 +1,10 @@
 """Aba Planilha dos juízes: gera o .xlsx de pontuação de uma task, sob demanda.
 
 A planilha não nasce sozinha com a task. O operador escolhe a task (o arquivo
-de equipe já salvo; depois de gerar na aba 3 ela vem preenchida), digita as
-equipes que vão fazer a prova — uma por linha, quantas forem — e gera. A lista
-de equipes fica lembrada para as próximas tasks da competição.
+de equipe já salvo; depois de gerar na aba 3 ela vem preenchida), monta a lista
+de equipes que vão fazer a prova — uma linha por equipe, quantas forem, com
+adicionar, apagar e reordenar — e gera. A lista fica lembrada para as próximas
+tasks da competição.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ import yaml
 
 from atwork import paths, planilha
 from atwork.ui import theme
+from atwork.ui.lista_editavel import ListaEditavel
 from atwork.ui.widgets import CORES_ESTADO
 
 
@@ -53,29 +55,24 @@ class AbaPlanilha(ttk.Frame):
         equipes.grid(row=1, column=0, sticky="nsew", pady=(px(12), 0))
         equipes.columnconfigure(0, weight=1)
         equipes.rowconfigure(0, weight=1)
-        fontes = theme.tipografia()
-        self.txt_equipes = tk.Text(
-            equipes, height=10, wrap="none", font=fontes.corpo, undo=True,
-            background=theme.CAMPO, foreground=theme.TEXTO, insertbackground=theme.TEXTO,
-            borderwidth=0, relief="flat", highlightthickness=1,
-            highlightbackground=theme.BORDA_FORTE, highlightcolor=theme.ACENTO,
-            padx=px(10), pady=px(8),
-        )
-        self.txt_equipes.grid(row=0, column=0, sticky="nsew")
-        barra = ttk.Scrollbar(equipes, orient="vertical", command=self.txt_equipes.yview)
-        self.txt_equipes.configure(yscrollcommand=barra.set)
-        barra.grid(row=0, column=1, sticky="ns")
-        self.txt_equipes.bind("<<Modified>>", self._ao_editar_equipes)
+        self.lista = ListaEditavel(equipes, titulo_coluna="Equipe",
+                                   texto_adicionar="Adicionar equipe", ao_mudar=self._contar)
+        self.lista.grid(row=0, column=0, sticky="nsew")
 
         lateral = ttk.Frame(equipes, style="Cartao.TFrame")
-        lateral.grid(row=0, column=2, sticky="n", padx=(px(12), 0))
+        lateral.grid(row=0, column=1, sticky="n", padx=(px(16), 0))
         self.lbl_qtd = ttk.Label(lateral, text="", style="Subtitulo.TLabel")
         self.lbl_qtd.pack(anchor="w")
         ttk.Label(
             lateral, style="CartaoFraco.TLabel", justify="left", wraplength=px(260),
-            text="Uma equipe por linha, na ordem em que vão aparecer as abas. Cada equipe "
-                 "ganha uma aba com o nome dela. A lista fica salva para as próximas tasks.",
+            text="Cada equipe ganha uma aba com o nome dela, nesta ordem. Use ↑ ↓ para "
+                 "reordenar e ✕ para apagar; Enter passa para a linha de baixo. A lista fica "
+                 "salva para as próximas tasks.",
         ).pack(anchor="w", pady=(px(6), px(10)))
+        self.lbl_aviso_nomes = ttk.Label(lateral, text="", style="CartaoFraco.TLabel",
+                                         foreground=theme.ALERTA, wraplength=px(260),
+                                         justify="left")
+        self.lbl_aviso_nomes.pack(anchor="w", pady=(0, px(10)))
         ttk.Button(lateral, text="Limpar lista", command=self._limpar).pack(fill="x")
 
         acoes = ttk.Frame(self)
@@ -136,27 +133,30 @@ class AbaPlanilha(ttk.Frame):
 
     # ------------------------------------------------------------ equipes
     def _nomes(self) -> list[str]:
-        return planilha.limpar_nomes(self.txt_equipes.get("1.0", "end"))
+        """Nomes válidos: sem linhas vazias e sem repetidos (o primeiro vale)."""
+        return planilha.limpar_nomes("\n".join(self.lista.valores()))
 
     def _carregar_equipes(self) -> None:
-        nomes = planilha.carregar_nomes()
-        self.txt_equipes.delete("1.0", "end")
-        self.txt_equipes.insert("1.0", "\n".join(nomes))
-        self.txt_equipes.edit_modified(False)
-        self._contar()
+        self.lista.definir(planilha.carregar_nomes())
 
     def _limpar(self) -> None:
-        self.txt_equipes.delete("1.0", "end")
-        self.txt_equipes.focus_set()
-
-    def _ao_editar_equipes(self, _evento=None) -> None:
-        if self.txt_equipes.edit_modified():
-            self.txt_equipes.edit_modified(False)
-            self._contar()
+        if any(self.lista.valores()) and not messagebox.askyesno(
+            "Limpar lista", "Apagar todas as equipes da lista?", parent=self
+        ):
+            return
+        self.lista.definir([])
+        self.lista.linhas[0].campo.focus_set()
 
     def _contar(self) -> None:
+        if not hasattr(self, "lbl_aviso_nomes"):
+            return
+        preenchidas = [v for v in self.lista.valores() if v]
         n = len(self._nomes())
         self.lbl_qtd.configure(text=f"{n} equipe" + ("" if n == 1 else "s"))
+        repetidas = len(preenchidas) - n
+        self.lbl_aviso_nomes.configure(
+            text=f"{repetidas} nome(s) repetido(s): só o primeiro entra." if repetidas else ""
+        )
         self._atualizar_botao()
 
     def _atualizar_botao(self) -> None:
