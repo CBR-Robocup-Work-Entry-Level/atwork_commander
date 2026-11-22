@@ -54,9 +54,9 @@ projeto:
 1. **Arena** — cadastra as Áreas de Serviço. Pode importar direto o
    `service_areas.yaml` do mapa do robô (ROS 2), que já traz IDs, tipos e as
    dimensões de mesa. Aqui também se cadastram a **distância aproximada** de
-   cada área até o START e o FINISH, as **tags de referência fixas** da mesa de
-   precisão (padrão 101..107) e **qual workstation hospeda a zona de
-   empilhamento** (tag padrão 200).
+   cada área até o START e o FINISH e **qual workstation hospeda a zona de
+   empilhamento** (tag padrão 200). A mesa de precisão é padronizada: toda PP
+   tem 7 slots com as tags 101 a 107, e isso não se configura.
 2. **Inventário** — marca quais ATTCs existem fisicamente (grade tag × cor) e
    quantos containers a organização tem.
 3. **Gerar task** — uma prova por vez. A aba mostra antes o que a arena atende e
@@ -127,7 +127,7 @@ Cada Área de Serviço guarda:
 | **lado marcado** | balanceamento entre a zona segue-linha e o resto (ATT1/ATT2) |
 | **distância do START / ao FINISH** (m, opcional) | BMT e BTT1 preferem as mesas de menor percurso; o guia do juiz mostra as distâncias |
 | **níveis** | prateleira |
-| **slots + tag de cada slot** | mesa de precisão (padrão 7 slots, tags 101..107) |
+| mesa de precisão | nada a preencher: toda PP tem 7 slots e tags 101..107 (padrão fixo, igual em todas as PPs da arena) |
 | **zona de empilhamento** (sim/não) + pilha máxima + tag de referência | workstation de 5, 10 ou 15 cm que hospeda a zona (padrão 3, tag 200); uma só por arena |
 
 Só isso. Cada campo que sobrou muda alguma decisão do gerador; o resto foi

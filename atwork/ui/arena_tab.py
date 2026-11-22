@@ -40,8 +40,6 @@ COLUNAS = (
 )
 
 
-def _tags_padrao_pp(cavidades: int) -> str:
-    return ", ".join(str(rules.TAG_SLOT_PP_BASE + i) for i in range(cavidades))
 
 
 class AbaArena(ttk.Frame):
@@ -94,8 +92,6 @@ class AbaArena(ttk.Frame):
         self.var_dist_finish = tk.StringVar()
         self.var_empilhamento = tk.BooleanVar(value=False)
         self.var_niveis = tk.StringVar(value="2")
-        self.var_cavidades = tk.StringVar(value=str(rules.AMT_SLOTS))
-        self.var_slot_tags = tk.StringVar(value=_tags_padrao_pp(rules.AMT_SLOTS))
         self.var_pilha = tk.StringVar(value=str(rules.MAX_PILHA_PADRAO))
         self.var_tag_ref = tk.StringVar(value=str(rules.TAG_REFERENCIA_ST))
 
@@ -131,11 +127,17 @@ class AbaArena(ttk.Frame):
         linha("sempre", "Distância do START (m)", lambda n: campo(form, self.var_dist_start, n))
         linha("sempre", "Distância ao FINISH (m)", lambda n: campo(form, self.var_dist_finish, n))
         self.e_niveis = linha("shelf", "Níveis", lambda n: campo(form, self.var_niveis, n))
-        self.e_cavidades = linha("pp", "Slots", lambda n: campo(form, self.var_cavidades, n))
-        self.e_slot_tags = linha(
-            "pp", "Tags dos slots (esq. -> dir.)",
-            lambda n: campo(form, self.var_slot_tags, n, largura=26),
+        # Mesa de precisao padronizada: so informacao, nada a preencher.
+        aviso_pp = ttk.Label(
+            form, style="CartaoFraco.TLabel", justify="left",
+            text=f"Mesa de precisão padrão: {rules.PP_SLOTS} slots, tags "
+                 f"{rules.PP_TAGS[0]} a {rules.PP_TAGS[-1]} da esquerda para a direita — "
+                 f"iguais em todas as mesas de precisão da arena.",
+            wraplength=theme.px(320),
         )
+        aviso_pp.grid(row=self._linha, column=0, columnspan=2, sticky="w", pady=(theme.px(4), 0))
+        self._linhas.setdefault("pp", []).append(aviso_pp)
+        self._linha += 1
         marcador("sempre", "No lado marcado (zona segue-linha)", self.var_lado)
         self.ck_empilhamento = marcador(
             "ws", "Esta mesa hospeda a zona de empilhamento",
@@ -184,8 +186,7 @@ class AbaArena(ttk.Frame):
                        "Zona de empilhamento: só em mesa de 5, 10 ou 15 cm.",
         "SHELF": "Distâncias aproximadas, em metros; vazio = não medido. "
                  "Coleta no nível de baixo, entrega no de cima.",
-        "PRECISION": "Uma tag de referência por slot, com IDs a partir de 100 "
-                     "e sem repetir na arena.",
+        "PRECISION": "Distâncias aproximadas, em metros; vazio = não medido.",
     }
 
     def _tipo_atual(self) -> str:
@@ -236,9 +237,6 @@ class AbaArena(ttk.Frame):
         self.var_altura.set("" if area.altura_cm is None else str(area.altura_cm))
         self.var_lado.set(area.lado_marcado)
         self.var_niveis.set(str(area.niveis))
-        self.var_cavidades.set(str(area.cavidades))
-        if area.tipo == "PRECISION":
-            self.var_slot_tags.set(", ".join(map(str, area.tags_dos_slots())))
         if area.empilhamento:
             self.var_pilha.set(str(area.pilha_maxima))
             self.var_tag_ref.set(str(area.tag_ref))
@@ -263,21 +261,9 @@ class AbaArena(ttk.Frame):
             return None
         return round(self._numero(variavel, nome), 2)
 
-    def _lista_inteiros(self, variavel: tk.StringVar, nome: str) -> list[int]:
-        bruto = variavel.get().replace(";", ",").replace(" ", ",")
-        partes = [p for p in bruto.split(",") if p.strip()]
-        try:
-            return [int(p) for p in partes]
-        except ValueError:
-            raise ValueError(f"{nome}: use inteiros separados por vírgula (recebido: {bruto!r})") from None
-
     def _salvar_area(self) -> None:
         tipo = self._tipo_atual()
         try:
-            cavidades = self._numero(self.var_cavidades, "Slots", True) if tipo == "PRECISION" else 0
-            slot_tags = self._lista_inteiros(self.var_slot_tags, "Tags dos slots") if tipo == "PRECISION" else []
-            if tipo == "PRECISION" and not slot_tags:
-                slot_tags = [rules.TAG_SLOT_PP_BASE + i for i in range(cavidades)]
             com_zona = tipo == "WORKSTATION" and self.var_empilhamento.get()
             tag_ref = self._numero(self.var_tag_ref, "Tag de referência", True) if com_zona else None
             area = ServiceArea(
@@ -290,10 +276,8 @@ class AbaArena(ttk.Frame):
                 dist_finish_m=self._metros(self.var_dist_finish, "Distância ao FINISH"),
                 empilhamento=com_zona,
                 niveis=self._numero(self.var_niveis, "Níveis", True),
-                cavidades=cavidades,
                 max_pilha=self._numero(self.var_pilha, "Pilha máxima", True)
                 if com_zona else 0,
-                slot_tags=slot_tags,
                 tag_referencia=tag_ref,
             )
         except ValueError as exc:
@@ -323,11 +307,6 @@ class AbaArena(ttk.Frame):
         else:
             self.meta.areas.append(area)
             self.app.registrar(f"Área {area.id} adicionada.")
-
-        # Tags fixas repetidas entre areas so aparecem na validacao da arena inteira.
-        erros_arena = [e for e in self.meta.validar() if "tag de referencia" in e]
-        if erros_arena:
-            messagebox.showwarning("Tags repetidas", "\n".join(erros_arena), parent=self)
 
         self._limpar()
         self.app.metaarena_mudou()
@@ -385,7 +364,7 @@ class AbaArena(ttk.Frame):
     @staticmethod
     def _tags_legiveis(area: ServiceArea) -> str:
         if area.tipo == "PRECISION":
-            return "slots " + ", ".join(map(str, area.tags_dos_slots()))
+            return f"slots {rules.PP_TAGS[0]}–{rules.PP_TAGS[-1]} (padrão)"
         if area.empilhamento:
             return f"zona de empilhamento {area.tag_ref}"
         return "—"

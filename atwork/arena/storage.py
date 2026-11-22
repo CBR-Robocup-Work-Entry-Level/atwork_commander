@@ -66,10 +66,10 @@ def _area_de_dict(item: dict) -> ServiceArea:
         dist_start_m=_metros(item.get("dist_start_m")),
         dist_finish_m=_metros(item.get("dist_finish_m")),
         niveis=int(item.get("niveis", 2)),
-        cavidades=int(item.get("cavidades", rules.AMT_SLOTS if tipo == "PRECISION" else 0)),
+        cavidades=rules.PP_SLOTS if tipo == "PRECISION" else 0,   # PP padronizada
         empilhamento=empilhamento,
         max_pilha=int(item.get("max_pilha") or rules.MAX_PILHA_PADRAO) if empilhamento else 0,
-        slot_tags=_inteiros(item.get("slot_tags")) if tipo == "PRECISION" else [],
+        slot_tags=[],                                            # tags da PP sao fixas
         tag_referencia=int(tag_ref) if (empilhamento and tag_ref is not None) else None,
     )
 

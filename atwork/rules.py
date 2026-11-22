@@ -147,16 +147,22 @@ POOL_IDS = tuple(range(ID_MIN, ID_MAX + 1))
 # posicao (rulebook 2.7.3, 2.7.4 e 2.8): uma tag acima de cada slot da mesa de
 # precisao e uma tag no centro da zona de empilhamento. Elas usam IDs fora da
 # faixa dos ATTCs (1..30), para que o detector do robo nunca confunda uma
-# referencia com um objeto. Os valores abaixo sao o padrao da competicao; a
-# metaarena pode sobrescrever por area, e o arquivo de equipe sempre lista as
-# tags em uso para que o robo nao precise de nada hardcoded.
+# referencia com um objeto. O arquivo de equipe sempre lista as tags em uso
+# para que o robo nao precise de nada hardcoded.
+#
+# A MESA DE PRECISAO E' PADRONIZADA: toda PP da arena tem 7 slots com as tags
+# 101..107, da esquerda para a direita. Nao e' configuravel, e duas PPs na mesma
+# arena repetem as mesmas tags — o robo distingue as mesas pelo ID da area
+# (PP_1, PP_2) e o slot pela tag.
 TAG_REFERENCIA_MIN = 100
+PP_SLOTS = 7
 TAG_SLOT_PP_BASE = 101          # slots da PP: 101, 102, ... da esquerda para a direita
+PP_TAGS = tuple(range(TAG_SLOT_PP_BASE, TAG_SLOT_PP_BASE + PP_SLOTS))   # 101..107
 TAG_REFERENCIA_ST = 200         # tag no centro da zona de empilhamento
 
 # AMT: 6 ATTCs (tags 1..6) sobre a mesa de precisao, com 1 slot vazio.
 AMT_IDS = (1, 2, 3, 4, 5, 6)
-AMT_SLOTS = 7
+AMT_SLOTS = PP_SLOTS
 
 # Pilha: altura padrao maxima da zona de empilhamento.
 MAX_PILHA_PADRAO = 3

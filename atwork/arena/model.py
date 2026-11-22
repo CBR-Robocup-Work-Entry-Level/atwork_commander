@@ -74,11 +74,18 @@ class ServiceArea:
     dist_start_m: float | None = None    # percurso aproximado desde o START
     dist_finish_m: float | None = None   # percurso aproximado ate o FINISH
     niveis: int = 2                 # SHELF: numero de prateleiras
-    cavidades: int = 0              # PRECISION: numero de slots
+    cavidades: int = 0              # PRECISION: sempre rules.PP_SLOTS (padronizada)
     empilhamento: bool = False      # WORKSTATION: hospeda a zona de empilhamento
     max_pilha: int = 0              # zona de empilhamento: altura maxima da pilha
-    slot_tags: list[int] = field(default_factory=list)   # PRECISION: tag de cada slot
+    slot_tags: list[int] = field(default_factory=list)   # ignorado: as tags da PP sao fixas
     tag_referencia: int | None = None                    # zona de empilhamento: tag no centro
+
+    def __post_init__(self) -> None:
+        # A mesa de precisao e' padronizada: 7 slots, tags 101..107, sempre.
+        # Valores vindos de arquivo antigo, importacao ou formulario sao descartados.
+        if self.tipo == "PRECISION":
+            self.cavidades = rules.PP_SLOTS
+            self.slot_tags = []
 
     # ---------------------------------------------------------- propriedades
     @property
@@ -106,14 +113,11 @@ class ServiceArea:
     def tags_dos_slots(self) -> list[int]:
         """Tag de referencia de cada slot da mesa de precisao, da esquerda para a direita.
 
-        Quando a metaarena nao informa, vale o padrao da competicao
-        (rules.TAG_SLOT_PP_BASE em diante).
+        Padrao fixo da competicao (rules.PP_TAGS = 101..107), igual em toda PP.
         """
         if self.tipo != "PRECISION":
             return []
-        if len(self.slot_tags) == self.cavidades:
-            return list(self.slot_tags)
-        return [rules.TAG_SLOT_PP_BASE + i for i in range(self.cavidades)]
+        return list(rules.PP_TAGS)
 
     def tag_do_slot(self, indice: int) -> int:
         """Tag do slot de indice 1..N (contado da esquerda)."""
@@ -166,16 +170,6 @@ class ServiceArea:
 
         if self.tipo == "SHELF" and self.niveis < 2:
             erros.append(f"{self.id}: prateleira precisa de pelo menos 2 niveis")
-        if self.tipo == "PRECISION":
-            if self.cavidades < 1:
-                erros.append(f"{self.id}: mesa de precisao precisa de pelo menos 1 slot")
-            if self.slot_tags and len(self.slot_tags) != self.cavidades:
-                erros.append(
-                    f"{self.id}: {len(self.slot_tags)} tag(s) de slot informada(s) para "
-                    f"{self.cavidades} slot(s) — informe uma tag por slot ou nenhuma"
-                )
-            if len(set(self.slot_tags)) != len(self.slot_tags):
-                erros.append(f"{self.id}: tags de slot repetidas")
         if self.empilhamento:
             if self.tipo != "WORKSTATION":
                 erros.append(
@@ -186,6 +180,11 @@ class ServiceArea:
                     f"{self.id}: a zona de empilhamento exige mesa de "
                     f"{', '.join(map(str, rules.ALTURAS_EMPILHAMENTO))} cm "
                     f"(esta mesa tem {self.altura_cm} cm)"
+                )
+            if self.tag_ref in rules.PP_TAGS:
+                erros.append(
+                    f"{self.id}: a tag {self.tag_ref} da zona de empilhamento coincide com uma "
+                    f"tag de slot da mesa de precisao ({rules.PP_TAGS[0]} a {rules.PP_TAGS[-1]})"
                 )
             if self.max_pilha and self.max_pilha < 2:
                 erros.append(f"{self.id}: zona de empilhamento precisa de pilha maxima >= 2")
@@ -295,15 +294,8 @@ class Metaarena:
                 f"a arena tem uma so, escolha uma unica workstation"
             )
 
-        tags_vistas: dict[int, str] = {}
-        for a in self.areas:
-            for tag in a.tags_de_referencia():
-                if tag in tags_vistas:
-                    erros.append(
-                        f"tag de referencia {tag} usada em {tags_vistas[tag]} e em {a.id}: "
-                        f"cada tag fixa da arena precisa ser unica"
-                    )
-                tags_vistas[tag] = a.id
+        # As tags das PPs (101..107) sao as mesmas em toda mesa de precisao, de
+        # proposito: nao ha unicidade de tag entre areas a conferir aqui.
 
         pares: set[tuple[int, str]] = set()
         for c in self.cubos:

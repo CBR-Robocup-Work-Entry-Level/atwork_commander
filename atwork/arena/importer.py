@@ -104,7 +104,7 @@ def importar_service_areas(caminho: Path | str) -> tuple[Metaarena, list[str]]:
                 tipo=tipo,
                 altura_cm=_altura_cm(dados) if tipo == "WORKSTATION" else None,
                 niveis=2,
-                cavidades=rules.AMT_SLOTS if tipo == "PRECISION" else 0,
+                cavidades=rules.PP_SLOTS if tipo == "PRECISION" else 0,
             )
         )
 
