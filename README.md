@@ -35,9 +35,10 @@ Requer Python 3.8+, PyYAML, openpyxl e tkinter (já vem no Python para Windows).
 
 ### Windows
 
-Baixe o `atwork-commander-<versão>.exe` da página de releases e dê dois
-cliques: não precisa instalar Python. Para rodar do código-fonte, use os
-comandos acima.
+Use o `atwork-commander-<versão>.exe` do zip distribuído no grupo da
+competição e dê dois cliques: não precisa instalar Python. Na primeira vez o
+Windows pode mostrar "O Windows protegeu o computador": **Mais informações →
+Executar assim mesmo**. Para rodar do código-fonte, use os comandos acima.
 
 ### Linux (Ubuntu 20.04, 22.04, 24.04, Debian, Fedora…)
 
