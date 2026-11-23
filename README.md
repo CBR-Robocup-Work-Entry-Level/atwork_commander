@@ -31,7 +31,35 @@ python main.py planilha ATT2_seed42_equipe.yaml --equipes "FEI;UFMG;Robotronix"
                                               # planilha dos juízes de uma task salva
 ```
 
-Requer Python 3.10+, PyYAML, openpyxl e tkinter (já vem no Python para Windows).
+Requer Python 3.8+, PyYAML, openpyxl e tkinter (já vem no Python para Windows).
+
+### Windows
+
+Baixe o `atwork-commander-<versão>.exe` da página de releases e dê dois
+cliques: não precisa instalar Python. Para rodar do código-fonte, use os
+comandos acima.
+
+### Linux (Ubuntu 20.04, 22.04, 24.04, Debian, Fedora…)
+
+```bash
+sudo apt install git python3 python3-venv python3-tk   # só uma vez (Ubuntu/Debian)
+git clone https://github.com/CBR-Robocup-Work-Entry-Level/atwork_commander.git
+cd atwork_commander
+./executar_linux.sh                                    # abre a interface
+./executar_linux.sh gerar ATT2 --seed 42               # qualquer comando da CLI
+```
+
+Sem git, dá para baixar pelo botão **Code → Download ZIP** da página do
+repositório e extrair. Para atualizar depois: `git pull` dentro da pasta.
+
+O `executar_linux.sh` cria na primeira vez um ambiente virtual próprio
+(`.venv/`, dentro da pasta do Commander) com as bibliotecas do
+`requirements.txt` e depois só abre o programa. Ele não instala nada no Python
+do sistema — o Ubuntu 24.04 nem permite mais `pip install` fora de um ambiente
+virtual — e funciona com o Python que vier na distribuição (3.8 no 20.04, 3.10
+no 22.04, 3.12 no 24.04). No Fedora, os pacotes são `python3` e `python3-tkinter`.
+Se baixou o `.zip` pelo navegador e o script perdeu a permissão de execução,
+rode `bash executar_linux.sh` ou `chmod +x executar_linux.sh` uma vez.
 
 ## Onde ficam os arquivos
 
@@ -200,9 +228,10 @@ suficientes.
 
 ```
 main.py                     entrypoint (GUI + CLI)
+executar_linux.sh           abre no Linux, com ambiente virtual próprio (.venv/)
 atwork/
   rules.py                  constantes do rulebook (inclui tags de referência)
-  paths.py                  %APPDATA%, Downloads, PyInstaller
+  paths.py                  pastas por sistema, Downloads, PyInstaller, abrir arquivo
   cli.py                    linha de comando
   arena/                    modelo, persistência e importação da metaarena
     model.py storage.py importer.py
@@ -217,6 +246,7 @@ atwork/
     bmt.py btt1.py btt2.py amt.py att1.py att2.py final.py
   validation/               schema.py (invariantes) + tests.py (regras da prova)
   export/                   team_yaml.py (+ conferir), referee_yaml.py, writer.py
+  planilha/                 planilha dos juízes (.xlsx): roteiro, fórmulas, caixas de seleção
   ui/                       app.py + uma aba por arquivo + preview_dialog.py
     theme.py                tema visual (ttk clam repintado no estilo Win 11)
     viewer.py               realce de sintaxe dos arquivos no preview
@@ -241,8 +271,13 @@ marcada — confira na aba Arena se é essa a mesa certa.
 ```bash
 pip install pyinstaller
 pyinstaller --noconsole --onefile --name atwork-commander ^
-  --add-data "config;config" main.py
+  --add-data "config;config" --exclude-module numpy --exclude-module PIL ^
+  --exclude-module lxml main.py
 ```
+
+As exclusões tiram bibliotecas opcionais do openpyxl que o Commander não usa
+(o executável cai de ~31 MB para ~14 MB). No Linux o separador do
+`--add-data` é `:` (`"config:config"`).
 
 `atwork/paths.py` já resolve os caminhos tanto rodando do código quanto
 congelado.

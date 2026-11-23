@@ -86,8 +86,8 @@ class ListaEditavel(ttk.Frame):
             scrollregion=self.canvas.bbox("all")))
         self.canvas.bind("<Configure>", lambda e: self.canvas.itemconfigure(
             self._janela, width=e.width))
-        self.canvas.bind("<Enter>", lambda _e: self.canvas.bind_all("<MouseWheel>", self._rolar))
-        self.canvas.bind("<Leave>", lambda _e: self.canvas.unbind_all("<MouseWheel>"))
+        self.canvas.bind("<Enter>", self._ligar_roda)
+        self.canvas.bind("<Leave>", self._desligar_roda)
 
         ttk.Button(self, text=f"+  {texto_adicionar}", command=self.adicionar).grid(
             row=2, column=0, columnspan=2, sticky="w", pady=(px(8), 0))
@@ -177,9 +177,28 @@ class ListaEditavel(ttk.Frame):
         if topo < visivel_ini or base > visivel_fim:
             self.canvas.yview_moveto(max(0.0, base - (visivel_fim - visivel_ini)))
 
+    # Roda do mouse: Windows e macOS mandam <MouseWheel> com `delta`; no Linux
+    # (X11) a roda chega como os botoes 4 (para cima) e 5 (para baixo).
+    EVENTOS_RODA = ("<MouseWheel>", "<Button-4>", "<Button-5>")
+
+    def _ligar_roda(self, _evento=None) -> None:
+        for evento in self.EVENTOS_RODA:
+            self.canvas.bind_all(evento, self._rolar)
+
+    def _desligar_roda(self, _evento=None) -> None:
+        for evento in self.EVENTOS_RODA:
+            self.canvas.unbind_all(evento)
+
     def _rolar(self, evento) -> None:
-        if self.corpo.winfo_height() > self.canvas.winfo_height():
-            self.canvas.yview_scroll(int(-evento.delta / 120), "units")
+        if self.corpo.winfo_height() <= self.canvas.winfo_height():
+            return
+        if getattr(evento, "num", None) == 4:
+            passos = -1
+        elif getattr(evento, "num", None) == 5:
+            passos = 1
+        else:
+            passos = -1 if evento.delta > 0 else 1   # delta e' 120/-120 no Windows, menor no macOS
+        self.canvas.yview_scroll(passos, "units")
 
     def _mudou(self) -> None:
         if self.ao_mudar:

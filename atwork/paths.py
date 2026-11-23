@@ -74,3 +74,22 @@ def pasta_downloads() -> Path:
             return do_registro
     padrao = Path.home() / "Downloads"
     return padrao if padrao.is_dir() else Path.home()
+
+
+def abrir_no_sistema(caminho: Path | str) -> None:
+    """Abre o arquivo no programa padrao do sistema (Excel, LibreOffice...).
+
+    Windows usa os.startfile; macOS, `open`; Linux, `xdg-open`. Levanta OSError
+    quando o sistema nao tem como abrir.
+    """
+    caminho = str(caminho)
+    if sys.platform == "win32":
+        os.startfile(caminho)   # noqa: S606 - so existe no Windows
+        return
+    import subprocess
+
+    comando = "open" if sys.platform == "darwin" else "xdg-open"
+    try:
+        subprocess.Popen([comando, caminho], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except FileNotFoundError as exc:
+        raise OSError(f"'{comando}' não encontrado para abrir {caminho}") from exc

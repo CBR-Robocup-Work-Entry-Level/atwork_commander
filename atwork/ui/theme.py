@@ -88,14 +88,27 @@ SUCESSO = "#0F7B32"
 ALERTA = "#9D5D00"
 ERRO = "#C42B1C"
 
-# Familias preferidas, da mais nova para a mais antiga.
-PREFERIDAS_UI = ("Segoe UI Variable Text", "Segoe UI", "Inter", "Helvetica")
-PREFERIDAS_MONO = ("Cascadia Code", "Cascadia Mono", "Consolas", "Courier New")
+# Familias preferidas, da mais nova para a mais antiga: primeiro as do Windows,
+# depois as que vem no Ubuntu/Debian/Fedora e no macOS.
+PREFERIDAS_UI = ("Segoe UI Variable Text", "Segoe UI", "Inter", "Ubuntu", "Noto Sans",
+                 "Cantarell", "DejaVu Sans", "Liberation Sans", "Helvetica Neue", "Helvetica")
+PREFERIDAS_MONO = ("Cascadia Code", "Cascadia Mono", "Consolas", "Ubuntu Mono",
+                   "DejaVu Sans Mono", "Noto Sans Mono", "Liberation Mono", "Menlo",
+                   "Courier New")
 
 
 def _primeira_disponivel(raiz: tk.Misc, candidatas: tuple[str, ...], reserva: str) -> str:
+    """Primeira familia instalada da lista; sem nenhuma, a familia REAL por tras da
+    fonte padrao do Tk (`reserva` e' um nome como TkDefaultFont, nao uma familia —
+    passado direto como familia, o X11 cai numa fonte bitmap)."""
     familias = set(tkfont.families(raiz))
-    return next((f for f in candidatas if f in familias), reserva)
+    escolhida = next((f for f in candidatas if f in familias), None)
+    if escolhida:
+        return escolhida
+    try:
+        return tkfont.nametofont(reserva, root=raiz).actual("family")
+    except (tk.TclError, TypeError):   # TypeError: Python 3.8 sem o argumento root
+        return tkfont.nametofont(reserva).actual("family")
 
 
 class Tipografia:

@@ -1,5 +1,7 @@
 """Validacao da task gerada, antes de qualquer exportacao."""
 
+from __future__ import annotations   # `list[str]` na anotacao precisa disto no Python 3.8
+
 from atwork.validation.schema import validar_estrutura
 from atwork.validation.tests import validar_prova
 

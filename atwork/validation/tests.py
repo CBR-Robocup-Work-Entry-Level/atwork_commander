@@ -9,10 +9,14 @@ ele mesmo documentou como limitacao. As checagens que independem da arena
 
 from __future__ import annotations
 
+from typing import List
+
 from atwork import rules
 from atwork.core.task import Task
 
-Erros = list[str]
+# Alias avaliado em tempo de execucao: `list[str]` so existe a partir do
+# Python 3.9, e o Commander tambem roda no Ubuntu 20.04 (Python 3.8).
+Erros = List[str]
 
 
 def _no_container(task: Task, cor: str) -> list:

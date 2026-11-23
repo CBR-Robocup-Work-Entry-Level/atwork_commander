@@ -9,7 +9,6 @@ tasks da competição.
 
 from __future__ import annotations
 
-import os
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
@@ -192,6 +191,6 @@ class AbaPlanilha(ttk.Frame):
         )
         if messagebox.askyesno("Planilha gerada", f"{caminho.name}\n\nAbrir agora?", parent=self):
             try:
-                os.startfile(caminho)   # noqa: S606 - abre no programa padrao do Windows
-            except (AttributeError, OSError) as exc:
+                paths.abrir_no_sistema(caminho)
+            except OSError as exc:
                 self.app.registrar(f"    não foi possível abrir: {exc}", "aviso")
